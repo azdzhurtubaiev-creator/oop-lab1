@@ -1,11 +1,11 @@
 using System;
+using System.Globalization;
 
 namespace ConsoleApp4
 {
     public class Pet
     {
         public const int ShortGuidLength = 8;
-        public const double FoodConversionRatio = 0.1;
 
         public const int MinAge = 0;
         public const int MaxAge = 60;
@@ -18,9 +18,22 @@ namespace ConsoleApp4
 
         public const double MinFoodWeight = 0.01;
 
-    
         public const string DefaultNickname = "Безіменний";
         public const double DefaultWeight = 1.0;
+        public const string DefaultOwner = "Не вказано";
+
+  
+        public const double DefaultFoodConversionRatio = 0.1;
+        public const double MinFoodConversionRatio = 0.01;
+        public const double MaxFoodConversionRatio = 0.5;
+
+       
+        public const char Separator = ';';
+        private const int PartsCount = 6;
+
+ 
+        private static int _createdCount;
+        private static double _foodConversionRatio;
 
         private string _nickname;
         private int _age;
@@ -28,53 +41,88 @@ namespace ConsoleApp4
         private bool _isVaccinated;
         private Species _type;
 
-      
+     
+        static Pet()
+        {
+            _createdCount = 0;
+            _foodConversionRatio = DefaultFoodConversionRatio;
+        }
+
+  
         public Pet()
+            : this(DefaultNickname, Species.Cat)
+        {
+            UsedConstructor = "Pet() - конструктор без параметрів";
+        }
+
+      
+        public Pet(string nickname, Species type)
+            : this(nickname, type, MinAge, DefaultWeight)
+        {
+            UsedConstructor = "Pet(nickname, type) - конструктор з двома параметрами";
+        }
+
+      
+        public Pet(string nickname, Species type, int age, double weight)
+            : this(nickname, type, age, weight, false, DefaultOwner)
+        {
+            UsedConstructor = "Pet(nickname, type, age, weight) - конструктор з чотирма параметрами";
+        }
+
+ 
+        public Pet(string nickname, Species type, int age, double weight, bool isVaccinated, string owner)
         {
             Id = Guid.NewGuid();
             CreatedAt = DateTime.Now;
             FeededAt = DateTime.MinValue;
 
-            Nickname = DefaultNickname;
-            Age = MinAge;
-            Weight = DefaultWeight;
-            IsVaccinated = false;
-            Type = Species.Cat;
-
-            UsedConstructor = "Pet() - конструктор без параметрів";
-        }
-
-     
-        public Pet(string nickname, Species type)
-            : this()
-        {
             Nickname = nickname;
             Type = type;
-
-            UsedConstructor = "Pet(nickname, type) - конструктор з двома параметрами";
-        }
-
-    
-        public Pet(string nickname, Species type, int age, double weight)
-            : this(nickname, type)
-        {
             Age = age;
             Weight = weight;
-
-            UsedConstructor = "Pet(nickname, type, age, weight) - конструктор з чотирма параметрами";
-        }
-
-         
-        public Pet(string nickname, Species type, int age, double weight, bool isVaccinated, string owner)
-            : this(nickname, type, age, weight)
-        {
             IsVaccinated = isVaccinated;
-            Owner = owner;
+            Owner = string.IsNullOrWhiteSpace(owner) ? DefaultOwner : owner.Trim();
 
             UsedConstructor = "Pet(nickname, type, age, weight, isVaccinated, owner) - повний конструктор";
+
+            _createdCount++;
+        }
+ 
+        public static int CreatedCount
+        {
+            get
+            {
+                return _createdCount;
+            }
         }
 
-   
+ 
+        public static double FoodConversionRatio
+        {
+            get
+            {
+                return _foodConversionRatio;
+            }
+            set
+            {
+                if (double.IsNaN(value) || double.IsInfinity(value))
+                {
+                    throw new ArgumentException(
+                        "Коефіцієнт має бути дійсним числом!",
+                        nameof(FoodConversionRatio));
+                }
+
+                if (value < MinFoodConversionRatio || value > MaxFoodConversionRatio)
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(FoodConversionRatio),
+                        $"Коефіцієнт має бути від {MinFoodConversionRatio} до {MaxFoodConversionRatio}!");
+                }
+
+                _foodConversionRatio = value;
+            }
+        }
+
         public string UsedConstructor { get; private set; }
 
         public Guid Id { get; private set; }
@@ -83,7 +131,7 @@ namespace ConsoleApp4
 
         public DateTime FeededAt { get; private set; }
 
-        public string Owner { get; set; } = "Не вказано";
+        public string Owner { get; set; } = DefaultOwner;
 
         public string Nickname
         {
@@ -107,6 +155,13 @@ namespace ConsoleApp4
                     throw new ArgumentOutOfRangeException(
                         nameof(Nickname),
                         $"Довжина клички має бути від {MinNameLength} до {MaxNameLength} символів!");
+                }
+
+                if (nickname.Contains(Separator))
+                {
+                    throw new ArgumentException(
+                        $"Кличка не може містити символ '{Separator}'!",
+                        nameof(Nickname));
                 }
 
                 _nickname = nickname;
@@ -197,6 +252,7 @@ namespace ConsoleApp4
             }
         }
 
+    
         public double DailyFoodNorm
         {
             get
@@ -230,6 +286,131 @@ namespace ConsoleApp4
                 return FeededAt == DateTime.MinValue;
             }
         }
+ 
+        public override string ToString()
+        {
+            string weight = Weight.ToString("0.##", CultureInfo.InvariantCulture);
+            string vaccinated = IsVaccinated ? "так" : "ні";
+
+            return $"{Nickname}{Separator}{Type}{Separator}{Age}{Separator}{weight}{Separator}{vaccinated}{Separator}{Owner}";
+        }
+
+   
+        public static Pet Parse(string s)
+        {
+            if (string.IsNullOrWhiteSpace(s))
+            {
+                throw new ArgumentNullException(
+                    nameof(s),
+                    "Рядок не може бути порожнім!");
+            }
+
+            string[] parts = s.Split(Separator);
+
+            if (parts.Length != PartsCount)
+            {
+                throw new FormatException(
+                    $"Рядок має містити {PartsCount} значень, розділених символом '{Separator}', " +
+                    $"а містить {parts.Length}. Формат: кличка;вид;вік;вага;вакцинація;власник");
+            }
+
+            string nickname = parts[0].Trim();
+            Species type = ParseSpecies(parts[1].Trim());
+            int age = ParseAge(parts[2].Trim());
+            double weight = ParseWeight(parts[3].Trim());
+            bool isVaccinated = ParseVaccination(parts[4].Trim());
+            string owner = parts[5].Trim();
+
+     
+            Pet pet = new Pet(nickname, type, age, weight, isVaccinated, owner);
+
+          
+            pet.UsedConstructor = "Pet.Parse(string) -> повний конструктор";
+
+            return pet;
+        }
+
+ 
+        public static bool TryParse(string s, out Pet obj)
+        {
+            obj = null;
+            bool valid = false;
+
+            try
+            {
+                obj = Parse(s);
+                valid = true;
+            }
+            catch (ArgumentNullException ex)
+            {
+                Console.WriteLine($"TryParse (порожній рядок): {CleanMessage(ex)}");
+            }
+            catch (FormatException ex)
+            {
+                Console.WriteLine($"TryParse (невірний формат): {CleanMessage(ex)}");
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                Console.WriteLine($"TryParse (значення поза діапазоном): {CleanMessage(ex)}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"TryParse: {CleanMessage(ex)}");
+            }
+
+            return valid;
+        }
+
+        
+        public static int ToHumanAge(int age, Species type)
+        {
+            if (age < MinAge || age > MaxAge)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(age),
+                    $"Вік має бути від {MinAge} до {MaxAge} років!");
+            }
+
+            switch (type)
+            {
+                case Species.Cat:
+                case Species.Dog:
+                    if (age == 0)
+                    {
+                        return 0;
+                    }
+
+                    if (age == 1)
+                    {
+                        return 15;
+                    }
+
+                    int yearStep = type == Species.Cat ? 4 : 5;
+                    return 24 + (age - 2) * yearStep;
+
+                case Species.Hamster:
+                    return age * 25;
+
+                case Species.Snake:
+                case Species.Reptile:
+                    return age * 2;
+
+                default:
+                    throw new ArgumentException(
+                        "Обрано неіснуючий вид тварини!",
+                        nameof(type));
+            }
+        }
+ 
+        public static bool CanLiveTogether(Species first, Species second)
+        {
+            if (first == second)
+            {
+                return true;
+            }
+
+            return !IsDangerousPair(first, second) && !IsDangerousPair(second, first);
+        }
 
         public bool HasNickname(string nickname)
         {
@@ -257,13 +438,12 @@ namespace ConsoleApp4
         {
             return Type == type;
         }
- 
+
         public string Feed()
         {
             return Feed(DailyFoodNorm);
         }
 
-      
         public string Feed(double foodWeight)
         {
             EnsureFoodWeightIsValid(foodWeight);
@@ -274,7 +454,6 @@ namespace ConsoleApp4
             return $"{Nickname} отримала {foodWeight:F2} кг корму. Нова вага: {Weight:F2} кг";
         }
 
-  
         public string Feed(double foodWeight, int times)
         {
             if (times <= 0)
@@ -296,13 +475,11 @@ namespace ConsoleApp4
             return $"{Nickname} отримала {times} порції по {foodWeight:F2} кг. Нова вага: {Weight:F2} кг";
         }
 
-      
         public string Walk()
         {
             return $"{Nickname} гуляє на вулиці!";
         }
 
-      
         public string Walk(int minutes)
         {
             if (minutes <= 0)
@@ -315,13 +492,11 @@ namespace ConsoleApp4
             return $"{Nickname} гуляє на вулиці {minutes} хв!";
         }
 
-   
         public string MakeSound()
         {
             return $"{Nickname}: {GetVoice()}";
         }
 
-        
         public string MakeSound(int times)
         {
             if (times <= 0)
@@ -339,6 +514,101 @@ namespace ConsoleApp4
             }
 
             return $"{Nickname}: {voice.Trim()}";
+        }
+
+       
+
+        private static Species ParseSpecies(string text)
+        {
+            if (int.TryParse(text, out int number))
+            {
+                if (number < 1 || number > 5)
+                {
+                    throw new FormatException(
+                        $"Номер виду '{text}' має бути від 1 до 5!");
+                }
+
+                return (Species)(number - 1);
+            }
+
+            if (Enum.TryParse(text, true, out Species type) && Enum.IsDefined(typeof(Species), type))
+            {
+                return type;
+            }
+
+            throw new FormatException(
+                $"Невідомий вид тварини '{text}'. Допустимі: Cat, Dog, Snake, Hamster, Reptile або номер 1-5");
+        }
+
+        private static int ParseAge(string text)
+        {
+            if (!int.TryParse(text, out int age))
+            {
+                throw new FormatException(
+                    $"Вік '{text}' не є цілим числом!");
+            }
+
+            return age;
+        }
+
+        private static double ParseWeight(string text)
+        {
+            string prepared = text.Replace(',', '.');
+
+            if (!double.TryParse(prepared, NumberStyles.Float, CultureInfo.InvariantCulture, out double weight))
+            {
+                throw new FormatException(
+                    $"Вага '{text}' не є числом!");
+            }
+
+            return weight;
+        }
+
+        private static bool ParseVaccination(string text)
+        {
+            string prepared = text.ToLower();
+
+            if (prepared == "так" || prepared == "true" || prepared == "yes" || prepared == "1")
+            {
+                return true;
+            }
+
+            if (prepared == "ні" || prepared == "false" || prepared == "no" || prepared == "0")
+            {
+                return false;
+            }
+
+            throw new FormatException(
+                $"Значення вакцинації '{text}' некоректне. Допустимі: так / ні");
+        }
+
+        private static bool IsDangerousPair(Species predator, Species prey)
+        {
+            if (prey == Species.Hamster)
+            {
+                return predator == Species.Cat || predator == Species.Dog || predator == Species.Snake;
+            }
+
+            if (prey == Species.Snake)
+            {
+                return predator == Species.Cat || predator == Species.Dog;
+            }
+
+            return false;
+        }
+
+        private static string CleanMessage(Exception ex)
+        {
+            string message = ex.Message;
+
+            int index = message.IndexOf(" (Parameter", StringComparison.Ordinal);
+
+            if (index > 0)
+            {
+                message = message.Substring(0, index);
+            }
+
+            return message;
         }
 
         private string GetVoice()

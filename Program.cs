@@ -8,13 +8,20 @@ namespace ConsoleApp4
 {
     internal class Program
     {
-        private static readonly List<Pet> _pets = new List<Pet>();
+        private readonly List<Pet> _pets = new List<Pet>();
 
-        private static readonly Random _random = new Random();
+        private readonly Random _random = new Random();
 
-        private static int _maxCapacity;
+        private int _maxCapacity;
 
         static void Main(string[] args)
+        {
+             
+            Program application = new Program();
+            application.Run();
+        }
+
+        private void Run()
         {
             Console.OutputEncoding = Encoding.UTF8;
 
@@ -32,6 +39,7 @@ namespace ConsoleApp4
                     "3. Пошук тварини",
                     "4. Поведінка тварини",
                     "5. Видалити тварину",
+                    "6. Продемонструвати static-методи",
                     "0. Вийти");
 
                 string choice = Console.ReadLine();
@@ -43,6 +51,7 @@ namespace ConsoleApp4
                     "3" => SearchPetsAction(),
                     "4" => DemonstrateBehaviorAction(),
                     "5" => DeletePetAction(),
+                    "6" => DemonstrateStaticAction(),
                     "0" => false,
                     _ => InvalidOption()
                 };
@@ -51,7 +60,7 @@ namespace ConsoleApp4
             Console.WriteLine("\nПрограму завершено.");
         }
 
-        private static void RenderMenu(string title, params string[] items)
+        private void RenderMenu(string title, params string[] items)
         {
             Console.WriteLine();
             Console.WriteLine("================================");
@@ -66,13 +75,13 @@ namespace ConsoleApp4
             Console.Write("Ваш вибір: ");
         }
 
-        private static bool InvalidOption()
+        private bool InvalidOption()
         {
             Console.WriteLine("Невірний пункт меню!");
             return true;
         }
 
-        private static bool AddPetAction()
+        private bool AddPetAction()
         {
             if (_pets.Count >= _maxCapacity)
             {
@@ -82,7 +91,8 @@ namespace ConsoleApp4
 
             RenderMenu("Додавання тварини",
                 "1. Ввести дані вручну",
-                "2. Створити автоматично (випадковий конструктор)");
+                "2. Створити автоматично (випадковий конструктор)",
+                "3. Ввести рядком (перетворення через TryParse)");
 
             string choice = Console.ReadLine();
 
@@ -90,13 +100,13 @@ namespace ConsoleApp4
             {
                 "1" => AddPetManually(),
                 "2" => AddPetAutomatically(),
+                "3" => AddPetFromString(),
                 _ => InvalidOption()
             };
         }
 
-        // [Lab-3] ручне введення: об'єкт створюється конструктором без параметрів,
-        // а далі заповнюється через властивості
-        private static bool AddPetManually()
+       
+        private bool AddPetManually()
         {
             Console.WriteLine();
 
@@ -206,9 +216,8 @@ namespace ConsoleApp4
             return true;
         }
 
-        // [Lab-3] автоматичне створення: конструктор обирається випадково,
-        // користувач отримує повідомлення про те, який саме конструктор спрацював
-        private static bool AddPetAutomatically()
+       
+        private bool AddPetAutomatically()
         {
             string[] names = { "Barsik", "Murzik", "Bobik", "Rex", "Luna", "Bella", "Rocky", "Max" };
             string[] owners = { "Іваненко І.", "Петренко П.", "Коваль О.", "Не вказано" };
@@ -228,33 +237,22 @@ namespace ConsoleApp4
 
             try
             {
-                switch (constructorNumber)
+                pet = constructorNumber switch
                 {
-                    case 1:
-                        // конструктор без параметрів разом з ініціалізаторами об'єкта
-                        pet = new Pet
-                        {
-                            Nickname = nickname,
-                            Type = type,
-                            Age = age,
-                            Weight = weight,
-                            IsVaccinated = vaccinated,
-                            Owner = owner
-                        };
-                        break;
-
-                    case 2:
-                        pet = new Pet(nickname, type);
-                        break;
-
-                    case 3:
-                        pet = new Pet(nickname, type, age, weight);
-                        break;
-
-                    default:
-                        pet = new Pet(nickname, type, age, weight, vaccinated, owner);
-                        break;
-                }
+                     
+                    1 => new Pet
+                    {
+                        Nickname = nickname,
+                        Type = type,
+                        Age = age,
+                        Weight = weight,
+                        IsVaccinated = vaccinated,
+                        Owner = owner
+                    },
+                    2 => new Pet(nickname, type),
+                    3 => new Pet(nickname, type, age, weight),
+                    _ => new Pet(nickname, type, age, weight, vaccinated, owner)
+                };
             }
             catch (Exception ex)
             {
@@ -278,21 +276,66 @@ namespace ConsoleApp4
             return true;
         }
 
-        private static bool ShowAllPetsAction()
+ 
+        private bool AddPetFromString()
+        {
+            Console.WriteLine();
+            Console.WriteLine("Формат: кличка;вид;вік;вага;вакцинація;власник");
+            Console.WriteLine("Вид: Cat, Dog, Snake, Hamster, Reptile або номер 1-5");
+            Console.WriteLine("Приклад: Barsik;Cat;3;4.5;так;Іваненко І.");
+
+            while (true)
+            {
+                Console.Write("\nВведіть рядок (Enter - скасувати): ");
+                string input = Console.ReadLine();
+
+                if (string.IsNullOrWhiteSpace(input))
+                {
+                    Console.WriteLine("Додавання скасовано.");
+                    return true;
+                }
+
+                if (Pet.TryParse(input, out Pet pet))
+                {
+                    _pets.Add(pet);
+
+                    Console.WriteLine("Рядок успішно перетворено, тварину додано!");
+                    Console.WriteLine($"Спрацював: {pet.UsedConstructor}");
+                    Console.WriteLine();
+                    PrintPet(pet);
+
+                    return true;
+                }
+
+                Console.WriteLine("Спробуйте ще раз.");
+            }
+        }
+
+        private bool ShowAllPetsAction()
         {
             Console.WriteLine();
 
             if (_pets.Count == 0)
             {
                 Console.WriteLine("Список тварин порожній.");
+                PrintCounters();
                 return true;
             }
 
             PrintPetsTable(_pets);
+            PrintCounters();
             return true;
         }
 
-        private static void PrintPetsTable(IEnumerable<Pet> pets)
+        
+        private void PrintCounters()
+        {
+            Console.WriteLine($"Тварин у списку: {_pets.Count} з {_maxCapacity}");
+            Console.WriteLine($"Коректно створено об'єктів Pet за весь час роботи програми: {Pet.CreatedCount}");
+            Console.WriteLine($"Коефіцієнт добової норми корму: {Pet.FoodConversionRatio}");
+        }
+
+        private void PrintPetsTable(IEnumerable<Pet> pets)
         {
             string line = new string('-', 110);
 
@@ -322,7 +365,7 @@ namespace ConsoleApp4
             Console.WriteLine(line);
         }
 
-        private static void PrintPet(Pet pet)
+        private void PrintPet(Pet pet)
         {
             Console.WriteLine($"ID: {pet.ShortId}");
             Console.WriteLine($"Кличка: {pet.Nickname}");
@@ -333,10 +376,11 @@ namespace ConsoleApp4
             Console.WriteLine($"Добова норма корму: {pet.DailyFoodNorm:F2} кг");
             Console.WriteLine($"Власник: {pet.Owner}");
             Console.WriteLine($"Картку створено: {pet.CreatedAt:dd.MM.yyyy HH:mm}");
-            Console.WriteLine($"Створено конструктором: {pet.UsedConstructor}");
+            Console.WriteLine($"Створено: {pet.UsedConstructor}");
+            Console.WriteLine($"Рядкове представлення (ToString): {pet}");
         }
 
-        private static bool SearchPetsAction()
+        private bool SearchPetsAction()
         {
             if (_pets.Count == 0)
             {
@@ -381,37 +425,37 @@ namespace ConsoleApp4
             return true;
         }
 
-        private static List<Pet> SearchByNickname()
+        private List<Pet> SearchByNickname()
         {
             string nickname = ReadString("Введіть кличку: ");
             return _pets.Where(p => p.HasNickname(nickname)).ToList();
         }
 
-        private static List<Pet> SearchByAge()
+        private List<Pet> SearchByAge()
         {
             int age = ReadInt("Введіть вік: ");
             return _pets.Where(p => p.HasAge(age)).ToList();
         }
 
-        private static List<Pet> SearchByWeight()
+        private List<Pet> SearchByWeight()
         {
             double weight = ReadDouble("Введіть вагу (кг): ");
             return _pets.Where(p => p.HasWeight(weight)).ToList();
         }
 
-        private static List<Pet> SearchByVaccination()
+        private List<Pet> SearchByVaccination()
         {
             bool vaccinated = ReadBool("Вакцинована? (так/ні): ");
             return _pets.Where(p => p.HasVaccination(vaccinated)).ToList();
         }
 
-        private static List<Pet> SearchByType()
+        private List<Pet> SearchByType()
         {
             Species type = ReadSpecies();
             return _pets.Where(p => p.HasType(type)).ToList();
         }
 
-        private static bool DemonstrateBehaviorAction()
+        private bool DemonstrateBehaviorAction()
         {
             if (_pets.Count == 0)
             {
@@ -462,8 +506,8 @@ namespace ConsoleApp4
             };
         }
 
-        // [Lab-3] виклик версії методу Feed без параметрів
-        private static bool FeedDefaultAction(Pet pet)
+ 
+        private bool FeedDefaultAction(Pet pet)
         {
             try
             {
@@ -478,7 +522,7 @@ namespace ConsoleApp4
             return true;
         }
 
-        private static bool FeedAmountAction(Pet pet)
+        private bool FeedAmountAction(Pet pet)
         {
             double foodWeight = ReadDouble("Введіть кількість корму (кг): ");
 
@@ -494,7 +538,7 @@ namespace ConsoleApp4
             return true;
         }
 
-        private static bool FeedTimesAction(Pet pet)
+        private bool FeedTimesAction(Pet pet)
         {
             double foodWeight = ReadDouble("Введіть кількість корму на одну порцію (кг): ");
             int times = ReadInt("Введіть кількість порцій: ");
@@ -511,13 +555,13 @@ namespace ConsoleApp4
             return true;
         }
 
-        private static bool WalkAction(Pet pet)
+        private bool WalkAction(Pet pet)
         {
             Console.WriteLine(pet.Walk());
             return true;
         }
 
-        private static bool WalkMinutesAction(Pet pet)
+        private bool WalkMinutesAction(Pet pet)
         {
             int minutes = ReadInt("Введіть тривалість прогулянки (хв): ");
 
@@ -533,13 +577,13 @@ namespace ConsoleApp4
             return true;
         }
 
-        private static bool SoundAction(Pet pet)
+        private bool SoundAction(Pet pet)
         {
             Console.WriteLine(pet.MakeSound());
             return true;
         }
 
-        private static bool SoundTimesAction(Pet pet)
+        private bool SoundTimesAction(Pet pet)
         {
             int times = ReadInt("Введіть кількість повторів: ");
 
@@ -555,15 +599,15 @@ namespace ConsoleApp4
             return true;
         }
 
-        private static bool ShowCardAction(Pet pet)
+        private bool ShowCardAction(Pet pet)
         {
             Console.WriteLine();
             PrintPet(pet);
             return true;
         }
 
-        // [Lab-3] демонстрація всіх перевантажених версій методів класу
-        private static bool DemonstrateOverloadsAction(Pet pet)
+        
+        private bool DemonstrateOverloadsAction(Pet pet)
         {
             Console.WriteLine($"\n--- Перевантажені методи класу Pet для {pet.Nickname} ---");
 
@@ -598,7 +642,178 @@ namespace ConsoleApp4
             return true;
         }
 
-        private static bool DeletePetAction()
+         
+        private bool DemonstrateStaticAction()
+        {
+            RenderMenu("Static-методи класу Pet",
+                "1. Лічильник створених об'єктів (Pet.CreatedCount)",
+                "2. Змінити коефіцієнт добової норми (Pet.FoodConversionRatio)",
+                "3. Вік у людських роках (Pet.ToHumanAge)",
+                "4. Чи можна тримати два види разом (Pet.CanLiveTogether)",
+                "5. Parse і TryParse на прикладах",
+                "0. Назад");
+
+            string choice = Console.ReadLine();
+
+            return choice switch
+            {
+                "1" => ShowCounterAction(),
+                "2" => ChangeRatioAction(),
+                "3" => HumanAgeAction(),
+                "4" => LiveTogetherAction(),
+                "5" => ParseDemoAction(),
+                "0" => true,
+                _ => InvalidOption()
+            };
+        }
+
+        private bool ShowCounterAction()
+        {
+            Console.WriteLine();
+            PrintCounters();
+            Console.WriteLine("Лічильник не зменшується при видаленні: він рахує створені об'єкти, а не ті, що зараз у списку.");
+            return true;
+        }
+
+        private bool ChangeRatioAction()
+        {
+            Console.WriteLine($"\nПоточний коефіцієнт: {Pet.FoodConversionRatio}");
+
+            if (_pets.Count > 0)
+            {
+                Console.WriteLine("Добова норма ДО зміни:");
+                PrintPetsTable(_pets);
+            }
+
+            double ratio = ReadDouble($"Новий коефіцієнт ({Pet.MinFoodConversionRatio} - {Pet.MaxFoodConversionRatio}): ");
+
+            try
+            {
+                Pet.FoodConversionRatio = ratio;
+                Console.WriteLine($"Коефіцієнт змінено на {Pet.FoodConversionRatio}.");
+            }
+            catch (Exception ex)
+            {
+                PrintError(ex);
+                return true;
+            }
+
+            if (_pets.Count > 0)
+            {
+                Console.WriteLine("Добова норма ПІСЛЯ зміни (змінилася в усіх тварин одночасно):");
+                PrintPetsTable(_pets);
+            }
+
+            return true;
+        }
+
+        private bool HumanAgeAction()
+        {
+            int age = ReadInt("Введіть вік тварини: ");
+            Species type = ReadSpecies();
+
+            try
+            {
+                int humanAge = Pet.ToHumanAge(age, type);
+                Console.WriteLine($"{type} віком {age} р. орієнтовно відповідає людині віком {humanAge} р.");
+            }
+            catch (Exception ex)
+            {
+                PrintError(ex);
+            }
+
+            return true;
+        }
+
+        private bool LiveTogetherAction()
+        {
+            Console.WriteLine("\nПерший вид:");
+            Species first = ReadSpecies();
+
+            Console.WriteLine("\nДругий вид:");
+            Species second = ReadSpecies();
+
+            bool result = Pet.CanLiveTogether(first, second);
+
+            Console.WriteLine(result
+                ? $"{first} і {second} можна тримати разом."
+                : $"{first} і {second} тримати разом НЕ можна: один з видів небезпечний для іншого.");
+
+            return true;
+        }
+
+        private bool ParseDemoAction()
+        {
+            Console.WriteLine("\n--- Pet.Parse: коректний рядок ---");
+
+            try
+            {
+                Pet parsed = Pet.Parse("Rex;Dog;4;12.5;так;Коваль О.");
+                Console.WriteLine($"Отримано об'єкт: {parsed}");
+                Console.WriteLine($"Кличка: {parsed.Nickname}, вид: {parsed.Type}, вік: {parsed.Age}, вага: {parsed.Weight:F2}");
+            }
+            catch (Exception ex)
+            {
+                PrintError(ex);
+            }
+
+            Console.WriteLine("\n--- Pet.Parse: некоректний рядок (виняток ловить програма) ---");
+
+            try
+            {
+                Pet.Parse("Rex;Dog;4");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"{ex.GetType().Name}:");
+                PrintError(ex);
+            }
+
+            Console.WriteLine("\n--- Pet.TryParse: різні рядки ---");
+
+            string[] samples =
+            {
+                "Luna;Cat;2;3.8;ні;Не вказано",
+                "",
+                "Luna;Cat;2",
+                "Luna;Dragon;2;3.8;ні;Іван",
+                "Luna;Cat;два;3.8;ні;Іван",
+                "Luna;Cat;2;3.8;можливо;Іван",
+                "Luna;Cat;99;3.8;ні;Іван",
+                "L;Cat;2;3.8;ні;Іван"
+            };
+
+            foreach (string sample in samples)
+            {
+                Console.WriteLine($"\nРядок: \"{sample}\"");
+
+                bool success = Pet.TryParse(sample, out Pet result);
+
+                Console.WriteLine(success
+                    ? $"Результат: true, об'єкт = {result}"
+                    : "Результат: false, об'єкт = null");
+            }
+
+            if (_pets.Count > 0)
+            {
+                Console.WriteLine("\n--- ToString -> TryParse для першої тварини зі списку ---");
+
+                string text = _pets[0].ToString();
+                Console.WriteLine($"ToString(): {text}");
+
+                if (Pet.TryParse(text, out Pet copy))
+                {
+                    Console.WriteLine($"Відновлено з рядка: {copy}");
+                }
+            }
+
+            Console.WriteLine($"\nЛічильник після демонстрації: {Pet.CreatedCount}");
+            Console.WriteLine("(кожен успішний Parse створює новий коректний об'єкт і збільшує лічильник, невдалі - ні)");
+
+            return true;
+        }
+
+        private bool DeletePetAction()
         {
             if (_pets.Count == 0)
             {
@@ -643,7 +858,7 @@ namespace ConsoleApp4
             return true;
         }
 
-        private static int RemoveByIndex()
+        private int RemoveByIndex()
         {
             PrintPetsTable(_pets);
             int index = ReadInt("Введіть порядковий номер тварини для видалення: ");
@@ -658,37 +873,37 @@ namespace ConsoleApp4
             return 1;
         }
 
-        private static int RemoveByNickname()
+        private int RemoveByNickname()
         {
             string nickname = ReadString("Введіть кличку: ");
             return _pets.RemoveAll(p => p.HasNickname(nickname));
         }
 
-        private static int RemoveByAge()
+        private int RemoveByAge()
         {
             int age = ReadInt("Введіть вік: ");
             return _pets.RemoveAll(p => p.HasAge(age));
         }
 
-        private static int RemoveByWeight()
+        private int RemoveByWeight()
         {
             double weight = ReadDouble("Введіть вагу (кг): ");
             return _pets.RemoveAll(p => p.HasWeight(weight));
         }
 
-        private static int RemoveByVaccination()
+        private int RemoveByVaccination()
         {
             bool vaccinated = ReadBool("Вакцинована? (так/ні): ");
             return _pets.RemoveAll(p => p.HasVaccination(vaccinated));
         }
 
-        private static int RemoveByType()
+        private int RemoveByType()
         {
             Species type = ReadSpecies();
             return _pets.RemoveAll(p => p.HasType(type));
         }
 
-        private static void PrintError(Exception ex)
+        private void PrintError(Exception ex)
         {
             string message = ex.Message;
 
@@ -702,7 +917,7 @@ namespace ConsoleApp4
             Console.WriteLine($"Помилка: {message}");
         }
 
-        private static void PrintSpeciesMenu()
+        private void PrintSpeciesMenu()
         {
             Console.WriteLine();
             Console.WriteLine("Оберіть вид тварини:");
@@ -713,7 +928,7 @@ namespace ConsoleApp4
             Console.WriteLine("5. Рептилія");
         }
 
-        private static int ParseInt(string input)
+        private int ParseInt(string input)
         {
             if (!int.TryParse(input, out int value))
             {
@@ -723,7 +938,7 @@ namespace ConsoleApp4
             return value;
         }
 
-        private static double ParseDouble(string input)
+        private double ParseDouble(string input)
         {
             string prepared = (input ?? string.Empty).Replace(',', '.');
 
@@ -735,7 +950,7 @@ namespace ConsoleApp4
             return value;
         }
 
-        private static bool ParseBool(string input)
+        private bool ParseBool(string input)
         {
             string prepared = (input ?? string.Empty).Trim().ToLower();
 
@@ -752,14 +967,14 @@ namespace ConsoleApp4
             throw new FormatException("Введіть 'так' або 'ні'!");
         }
 
-        private static Species ParseSpecies(string input)
+        private Species ParseSpecies(string input)
         {
             int number = ParseInt(input);
 
             return (Species)(number - 1);
         }
 
-        private static string ReadString(string message)
+        private string ReadString(string message)
         {
             while (true)
             {
@@ -775,7 +990,7 @@ namespace ConsoleApp4
             }
         }
 
-        private static int ReadInt(string message)
+        private int ReadInt(string message)
         {
             while (true)
             {
@@ -792,7 +1007,7 @@ namespace ConsoleApp4
             }
         }
 
-        private static int ReadPositiveInt(string message)
+        private int ReadPositiveInt(string message)
         {
             while (true)
             {
@@ -807,7 +1022,7 @@ namespace ConsoleApp4
             }
         }
 
-        private static double ReadDouble(string message)
+        private double ReadDouble(string message)
         {
             while (true)
             {
@@ -824,7 +1039,7 @@ namespace ConsoleApp4
             }
         }
 
-        private static bool ReadBool(string message)
+        private bool ReadBool(string message)
         {
             while (true)
             {
@@ -841,7 +1056,7 @@ namespace ConsoleApp4
             }
         }
 
-        private static Species ReadSpecies()
+        private Species ReadSpecies()
         {
             while (true)
             {
