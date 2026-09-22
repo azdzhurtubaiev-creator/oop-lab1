@@ -16,7 +16,7 @@ namespace ConsoleApp4
 
         static void Main(string[] args)
         {
-             
+           
             Program application = new Program();
             application.Run();
         }
@@ -104,8 +104,7 @@ namespace ConsoleApp4
                 _ => InvalidOption()
             };
         }
-
-       
+ 
         private bool AddPetManually()
         {
             Console.WriteLine();
@@ -215,8 +214,7 @@ namespace ConsoleApp4
 
             return true;
         }
-
-       
+ 
         private bool AddPetAutomatically()
         {
             string[] names = { "Barsik", "Murzik", "Bobik", "Rex", "Luna", "Bella", "Rocky", "Max" };
@@ -239,7 +237,7 @@ namespace ConsoleApp4
             {
                 pet = constructorNumber switch
                 {
-                     
+                   
                     1 => new Pet
                     {
                         Nickname = nickname,
@@ -275,7 +273,6 @@ namespace ConsoleApp4
 
             return true;
         }
-
  
         private bool AddPetFromString()
         {
@@ -295,7 +292,7 @@ namespace ConsoleApp4
                     return true;
                 }
 
-                if (Pet.TryParse(input, out Pet pet))
+                if (Pet.TryParse(input, out Pet pet, out string error))
                 {
                     _pets.Add(pet);
 
@@ -307,6 +304,7 @@ namespace ConsoleApp4
                     return true;
                 }
 
+                Console.WriteLine($"Помилка: {error}");
                 Console.WriteLine("Спробуйте ще раз.");
             }
         }
@@ -326,8 +324,7 @@ namespace ConsoleApp4
             PrintCounters();
             return true;
         }
-
-        
+ 
         private void PrintCounters()
         {
             Console.WriteLine($"Тварин у списку: {_pets.Count} з {_maxCapacity}");
@@ -506,8 +503,7 @@ namespace ConsoleApp4
             };
         }
 
- 
-        private bool FeedDefaultAction(Pet pet)
+         private bool FeedDefaultAction(Pet pet)
         {
             try
             {
@@ -606,7 +602,7 @@ namespace ConsoleApp4
             return true;
         }
 
-        
+ 
         private bool DemonstrateOverloadsAction(Pet pet)
         {
             Console.WriteLine($"\n--- Перевантажені методи класу Pet для {pet.Nickname} ---");
@@ -641,8 +637,7 @@ namespace ConsoleApp4
 
             return true;
         }
-
-         
+ 
         private bool DemonstrateStaticAction()
         {
             RenderMenu("Static-методи класу Pet",
@@ -787,11 +782,11 @@ namespace ConsoleApp4
             {
                 Console.WriteLine($"\nРядок: \"{sample}\"");
 
-                bool success = Pet.TryParse(sample, out Pet result);
+                bool success = Pet.TryParse(sample, out Pet result, out string error);
 
                 Console.WriteLine(success
                     ? $"Результат: true, об'єкт = {result}"
-                    : "Результат: false, об'єкт = null");
+                    : $"Результат: false, причина: {error}");
             }
 
             if (_pets.Count > 0)

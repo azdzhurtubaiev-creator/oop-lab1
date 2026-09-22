@@ -333,32 +333,24 @@ namespace ConsoleApp4
  
         public static bool TryParse(string s, out Pet obj)
         {
+            return TryParse(s, out obj, out _);
+        }
+
+        public static bool TryParse(string s, out Pet obj, out string error)
+        {
             obj = null;
-            bool valid = false;
+            error = null;
 
             try
             {
                 obj = Parse(s);
-                valid = true;
-            }
-            catch (ArgumentNullException ex)
-            {
-                Console.WriteLine($"TryParse (порожній рядок): {CleanMessage(ex)}");
-            }
-            catch (FormatException ex)
-            {
-                Console.WriteLine($"TryParse (невірний формат): {CleanMessage(ex)}");
-            }
-            catch (ArgumentOutOfRangeException ex)
-            {
-                Console.WriteLine($"TryParse (значення поза діапазоном): {CleanMessage(ex)}");
+                return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"TryParse: {CleanMessage(ex)}");
+                error = CleanMessage(ex);
+                return false;
             }
-
-            return valid;
         }
 
         
