@@ -1,4 +1,4 @@
-namespace ConsoleApp4
+﻿namespace ConsoleApp4
 {
     public enum Species
     {
