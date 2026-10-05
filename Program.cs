@@ -94,8 +94,6 @@ namespace ConsoleApp4
             };
         }
 
-        // [Lab-3] ручне введення: об'єкт створюється конструктором без параметрів,
-        // а далі заповнюється через властивості
         private static bool AddPetManually()
         {
             Console.WriteLine();
@@ -206,8 +204,6 @@ namespace ConsoleApp4
             return true;
         }
 
-        // [Lab-3] автоматичне створення: конструктор обирається випадково,
-        // користувач отримує повідомлення про те, який саме конструктор спрацював
         private static bool AddPetAutomatically()
         {
             string[] names = { "Barsik", "Murzik", "Bobik", "Rex", "Luna", "Bella", "Rocky", "Max" };
@@ -231,7 +227,6 @@ namespace ConsoleApp4
                 switch (constructorNumber)
                 {
                     case 1:
-                        // конструктор без параметрів разом з ініціалізаторами об'єкта
                         pet = new Pet
                         {
                             Nickname = nickname,
@@ -462,7 +457,6 @@ namespace ConsoleApp4
             };
         }
 
-        // [Lab-3] виклик версії методу Feed без параметрів
         private static bool FeedDefaultAction(Pet pet)
         {
             try
@@ -562,7 +556,6 @@ namespace ConsoleApp4
             return true;
         }
 
-        // [Lab-3] демонстрація всіх перевантажених версій методів класу
         private static bool DemonstrateOverloadsAction(Pet pet)
         {
             Console.WriteLine($"\n--- Перевантажені методи класу Pet для {pet.Nickname} ---");
