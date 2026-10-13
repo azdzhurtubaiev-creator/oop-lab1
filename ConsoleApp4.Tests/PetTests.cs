@@ -1,716 +1,950 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using ConsoleApp4;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace ConsoleApp4.Tests
 {
+    // Клас змінює статичний стан Pet (коефіцієнт, лічильник),
+    // тому тести в ньому не можна запускати паралельно
     [TestClass]
     [DoNotParallelize]
-    public class ProgramTests
+    public class PetTests
     {
-        private Program _program;
-        private Pet _barsik;
-        private Pet _rex;
-        private Pet _luna;
+        private Pet _pet;
+        private double _savedRatio;
 
+        // Виконується ПЕРЕД кожним тестом: свіжа тварина з відомими значеннями
         [TestInitialize]
         public void Setup()
         {
-            _program = new Program(3);
-            _barsik = new Pet("Barsik", Species.Cat, 3, 4.5, true, "Іваненко І.");
-            _rex = new Pet("Rex", Species.Dog, 5, 20, false, "Коваль О.");
-            _luna = new Pet("Luna", Species.Cat, 1, 3, true, "Не вказано");
+            _savedRatio = Pet.FoodConversionRatio;
+            _pet = new Pet("Barsik", Species.Cat, 3, 4.5, true, "Іваненко І.");
         }
 
+        // Виконується ПІСЛЯ кожного тесту: повертаємо статичний коефіцієнт,
+        // щоб тести не впливали один на одного
         [TestCleanup]
         public void Cleanup()
         {
-            _program = null;
-            _barsik = null;
-            _rex = null;
-            _luna = null;
+            Pet.FoodConversionRatio = _savedRatio;
+            _pet = null;
         }
 
-        private void FillProgram()
-        {
-            _program.AddPet(_barsik);
-            _program.AddPet(_rex);
-            _program.AddPet(_luna);
-        }
+        // =====================================================================
+        // Конструктори
+        // =====================================================================
 
         [TestMethod]
-        public void Constructor_ValidCapacity_CreatesEmptyList()
+        public void Constructor_NoParameters_SetsDefaultValues()
         {
             // Arrange + Act
-            Program program = new Program(5);
+            Pet pet = new Pet();
 
             // Assert
-            Assert.AreEqual(5, program.MaxCapacity);
-            Assert.AreEqual(0, program.Count);
-            Assert.IsTrue(program.IsEmpty);
-            Assert.IsFalse(program.IsFull);
+            Assert.IsNotNull(pet);
+            Assert.AreEqual(Pet.DefaultNickname, pet.Nickname);
+            Assert.AreEqual(Species.Cat, pet.Type);
+            Assert.AreEqual(Pet.MinAge, pet.Age);
+            Assert.AreEqual(Pet.DefaultWeight, pet.Weight);
+            Assert.IsFalse(pet.IsVaccinated);
+            Assert.AreEqual(Pet.DefaultOwner, pet.Owner);
         }
 
         [TestMethod]
-        [DataRow(0)]
-        [DataRow(-5)]
-        public void Constructor_CapacityNotPositive_ThrowsArgumentOutOfRangeException(int capacity)
+        public void Constructor_TwoParameters_SetsNicknameAndTypeAndDefaultsForOthers()
+        {
+            // Arrange
+            string nickname = "Rex";
+            Species type = Species.Dog;
+
+            // Act
+            Pet pet = new Pet(nickname, type);
+
+            // Assert
+            Assert.AreEqual(nickname, pet.Nickname);
+            Assert.AreEqual(type, pet.Type);
+            Assert.AreEqual(Pet.MinAge, pet.Age);
+            Assert.AreEqual(Pet.DefaultWeight, pet.Weight);
+        }
+
+        [TestMethod]
+        public void Constructor_FourParameters_SetsAgeAndWeight()
+        {
+            // Arrange + Act
+            Pet pet = new Pet("Luna", Species.Hamster, 2, 0.3);
+
+            // Assert
+            Assert.AreEqual(2, pet.Age);
+            Assert.AreEqual(0.3, pet.Weight);
+            Assert.IsFalse(pet.IsVaccinated);
+            Assert.AreEqual(Pet.DefaultOwner, pet.Owner);
+        }
+
+        [TestMethod]
+        public void Constructor_AllParameters_SetsAllValues()
+        {
+            // Assert (Arrange і Act виконано в Setup)
+            Assert.AreEqual("Barsik", _pet.Nickname);
+            Assert.AreEqual(Species.Cat, _pet.Type);
+            Assert.AreEqual(3, _pet.Age);
+            Assert.AreEqual(4.5, _pet.Weight);
+            Assert.IsTrue(_pet.IsVaccinated);
+            Assert.AreEqual("Іваненко І.", _pet.Owner);
+        }
+
+        [TestMethod]
+        public void Constructor_EmptyOwner_SetsDefaultOwner()
+        {
+            // Arrange + Act
+            Pet pet = new Pet("Rex", Species.Dog, 1, 5, false, "   ");
+
+            // Assert
+            Assert.AreEqual(Pet.DefaultOwner, pet.Owner);
+        }
+
+        [TestMethod]
+        public void Constructor_TwoObjects_HaveDifferentIds()
+        {
+            // Arrange + Act
+            Pet first = new Pet();
+            Pet second = new Pet();
+
+            // Assert
+            Assert.AreNotEqual(first.Id, second.Id);
+        }
+
+        [TestMethod]
+        public void Constructor_NoParameters_SetsUsedConstructorDescription()
+        {
+            // Arrange + Act
+            Pet pet = new Pet();
+
+            // Assert
+            Assert.IsTrue(pet.UsedConstructor.StartsWith("Pet()"));
+        }
+
+        [TestMethod]
+        public void Constructor_NewObject_IsHungry()
+        {
+            // Assert
+            Assert.IsTrue(_pet.IsHungry);
+        }
+
+        [TestMethod]
+        public void Constructor_InvalidAge_ThrowsArgumentOutOfRangeException()
         {
             // Act + Assert
-            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new Program(capacity));
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(
+                () => new Pet("Rex", Species.Dog, 99, 5));
         }
 
+        // =====================================================================
+        // Лічильник створених об'єктів (статична властивість)
+        // =====================================================================
+
         [TestMethod]
-        public void AddPet_ValidPet_IncreasesCount()
+        public void CreatedCount_ValidObject_IncreasesByOne()
         {
+            // Arrange
+            int before = Pet.CreatedCount;
+
             // Act
-            _program.AddPet(_barsik);
+            new Pet("Rex", Species.Dog);
+            int after = Pet.CreatedCount;
 
             // Assert
-            Assert.AreEqual(1, _program.Count);
-            Assert.IsFalse(_program.IsEmpty);
+            Assert.AreEqual(before + 1, after);
         }
 
         [TestMethod]
-        public void AddPet_Null_ThrowsArgumentNullException()
+        public void CreatedCount_InvalidObject_DoesNotChange()
+        {
+            // Arrange
+            int before = Pet.CreatedCount;
+
+            // Act
+            try
+            {
+                new Pet("Rex", Species.Dog, -5, 5);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                // очікуваний виняток: об'єкт не створено
+            }
+
+            int after = Pet.CreatedCount;
+
+            // Assert
+            Assert.AreEqual(before, after);
+        }
+
+        [TestMethod]
+        public void CreatedCount_EachConstructor_IncreasesExactlyOnce()
+        {
+            // Arrange
+            int before = Pet.CreatedCount;
+
+            // Act
+            new Pet();
+            new Pet("Rex", Species.Dog);
+            new Pet("Rex", Species.Dog, 2, 10);
+            new Pet("Rex", Species.Dog, 2, 10, true, "Коваль О.");
+            int after = Pet.CreatedCount;
+
+            // Assert: чотири об'єкти, а не більше, хоч конструктори викликають один одного
+            Assert.AreEqual(before + 4, after);
+        }
+
+        // =====================================================================
+        // Властивість Nickname (секція set з перевірками)
+        // =====================================================================
+
+        [TestMethod]
+        [DataRow("Rex")]
+        [DataRow("Ab")]
+        [DataRow("Барсик")]
+        public void Nickname_ValidValue_IsSet(string nickname)
+        {
+            // Act
+            _pet.Nickname = nickname;
+
+            // Assert
+            Assert.AreEqual(nickname, _pet.Nickname);
+        }
+
+        [TestMethod]
+        public void Nickname_ValueWithSpaces_IsTrimmed()
+        {
+            // Act
+            _pet.Nickname = "   Rex   ";
+
+            // Assert
+            Assert.AreEqual("Rex", _pet.Nickname);
+        }
+
+        [TestMethod]
+        public void Nickname_Null_ThrowsArgumentNullException()
         {
             // Act + Assert
-            Assert.ThrowsExactly<ArgumentNullException>(() => _program.AddPet(null));
-        }
-
-        [TestMethod]
-        public void AddPet_WhenFull_ThrowsInvalidOperationException()
-        {
-            // Arrange
-            FillProgram();
-            Pet extra = new Pet("Max", Species.Snake);
-
-            // Act + Assert
-            Assert.ThrowsExactly<InvalidOperationException>(() => _program.AddPet(extra));
-            Assert.AreEqual(3, _program.Count);
-        }
-
-        [TestMethod]
-        public void AddPet_SamePetTwice_ThrowsInvalidOperationException()
-        {
-            // Arrange
-            _program.AddPet(_barsik);
-
-            // Act + Assert
-            Assert.ThrowsExactly<InvalidOperationException>(() => _program.AddPet(_barsik));
-            Assert.AreEqual(1, _program.Count);
-        }
-
-        [TestMethod]
-        public void IsFull_CountEqualsMaxCapacity_ReturnsTrue()
-        {
-            // Act
-            FillProgram();
-
-            // Assert
-            Assert.IsTrue(_program.IsFull);
-        }
-
-        [TestMethod]
-        public void GetAll_ReturnsPetsInAddingOrder()
-        {
-            // Arrange
-            FillProgram();
-
-            // Act
-            IReadOnlyList<Pet> all = _program.GetAll();
-
-            // Assert
-            Assert.AreEqual(3, all.Count);
-            Assert.AreSame(_barsik, all[0]);
-            Assert.AreSame(_rex, all[1]);
-            Assert.AreSame(_luna, all[2]);
-        }
-
-        [TestMethod]
-        public void GetAll_ReturnsReadOnlyCollection()
-        {
-            // Arrange
-            FillProgram();
-
-            // Act
-            IReadOnlyList<Pet> all = _program.GetAll();
-
-            // Assert
-            Assert.IsInstanceOfType<ReadOnlyCollection<Pet>>(all);
-        }
-
-        [TestMethod]
-        [DataRow(1, "Barsik")]
-        [DataRow(2, "Rex")]
-        [DataRow(3, "Luna")]
-        public void GetByNumber_ValidNumber_ReturnsPet(int number, string expectedNickname)
-        {
-            // Arrange
-            FillProgram();
-
-            // Act
-            Pet pet = _program.GetByNumber(number);
-
-            // Assert
-            Assert.AreEqual(expectedNickname, pet.Nickname);
-        }
-
-        [TestMethod]
-        [DataRow(0)]
-        [DataRow(4)]
-        [DataRow(-1)]
-        public void GetByNumber_InvalidNumber_ThrowsArgumentOutOfRangeException(int number)
-        {
-            // Arrange
-            FillProgram();
-
-            // Act + Assert
-            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _program.GetByNumber(number));
-        }
-
-        [TestMethod]
-        [DataRow("Barsik")]
-        [DataRow("REX")]
-        [DataRow("  luna  ")]
-        public void ContainsNickname_ExistingNickname_ReturnsTrue(string nickname)
-        {
-            // Arrange
-            FillProgram();
-
-            // Act
-            bool actual = _program.ContainsNickname(nickname);
-
-            // Assert
-            Assert.IsTrue(actual);
-        }
-
-        [TestMethod]
-        public void ContainsNickname_MissingNickname_ReturnsFalse()
-        {
-            // Arrange
-            FillProgram();
-
-            // Act
-            bool actual = _program.ContainsNickname("Sharik");
-
-            // Assert
-            Assert.IsFalse(actual);
-        }
-
-        [TestMethod]
-        public void ContainsNickname_EmptyList_ReturnsFalse()
-        {
-            // Act
-            bool actual = _program.ContainsNickname("Barsik");
-
-            // Assert
-            Assert.IsFalse(actual);
-        }
-
-        [TestMethod]
-        public void FindByNickname_SeveralMatches_ReturnsAll()
-        {
-            // Arrange
-            _program.AddPet(_barsik);
-            _program.AddPet(new Pet("Barsik", Species.Dog, 7, 15));
-            _program.AddPet(_rex);
-
-            // Act
-            List<Pet> found = _program.FindByNickname("barsik");
-
-            // Assert
-            Assert.AreEqual(2, found.Count);
-            Assert.IsTrue(found.TrueForAll(p => p.Nickname == "Barsik"));
-        }
-
-        [TestMethod]
-        public void FindByNickname_MissingNickname_ReturnsEmptyList()
-        {
-            // Arrange
-            FillProgram();
-
-            // Act
-            List<Pet> found = _program.FindByNickname("Sharik");
-
-            // Assert
-            Assert.IsNotNull(found);
-            Assert.AreEqual(0, found.Count);
-        }
-
-        [TestMethod]
-        [DataRow(3, 1)]
-        [DataRow(5, 1)]
-        [DataRow(10, 0)]
-        public void FindByAge_ReturnsExpectedCount(int age, int expectedCount)
-        {
-            // Arrange
-            FillProgram();
-
-            // Act
-            List<Pet> found = _program.FindByAge(age);
-
-            // Assert
-            Assert.AreEqual(expectedCount, found.Count);
-        }
-
-        [TestMethod]
-        [DataRow(4.5, 1)]
-        [DataRow(20.0, 1)]
-        [DataRow(7.0, 0)]
-        public void FindByWeight_ReturnsExpectedCount(double weight, int expectedCount)
-        {
-            // Arrange
-            FillProgram();
-
-            // Act
-            List<Pet> found = _program.FindByWeight(weight);
-
-            // Assert
-            Assert.AreEqual(expectedCount, found.Count);
-        }
-
-        [TestMethod]
-        [DataRow(true, 2)]
-        [DataRow(false, 1)]
-        public void FindByVaccination_ReturnsExpectedCount(bool vaccinated, int expectedCount)
-        {
-            // Arrange
-            FillProgram();
-
-            // Act
-            List<Pet> found = _program.FindByVaccination(vaccinated);
-
-            // Assert
-            Assert.AreEqual(expectedCount, found.Count);
-        }
-
-        [TestMethod]
-        [DataRow(Species.Cat, 2)]
-        [DataRow(Species.Dog, 1)]
-        [DataRow(Species.Snake, 0)]
-        public void FindByType_ReturnsExpectedCount(Species type, int expectedCount)
-        {
-            // Arrange
-            FillProgram();
-
-            // Act
-            List<Pet> found = _program.FindByType(type);
-
-            // Assert
-            Assert.AreEqual(expectedCount, found.Count);
-        }
-
-        [TestMethod]
-        public void FindByType_DoesNotChangeList()
-        {
-            // Arrange
-            FillProgram();
-
-            // Act
-            _program.FindByType(Species.Cat);
-
-            // Assert
-            Assert.AreEqual(3, _program.Count);
-        }
-
-        [TestMethod]
-        public void RemoveByNumber_ValidNumber_RemovesPetAndShiftsOthers()
-        {
-            // Arrange
-            FillProgram();
-
-            // Act
-            bool removed = _program.RemoveByNumber(1);
-
-            // Assert
-            Assert.IsTrue(removed);
-            Assert.AreEqual(2, _program.Count);
-            Assert.AreSame(_rex, _program.GetByNumber(1));
-        }
-
-        [TestMethod]
-        [DataRow(0)]
-        [DataRow(4)]
-        public void RemoveByNumber_InvalidNumber_ReturnsFalse(int number)
-        {
-            // Arrange
-            FillProgram();
-
-            // Act
-            bool removed = _program.RemoveByNumber(number);
-
-            // Assert
-            Assert.IsFalse(removed);
-            Assert.AreEqual(3, _program.Count);
-        }
-
-        [TestMethod]
-        public void RemoveByNickname_SeveralMatches_RemovesAll()
-        {
-            // Arrange
-            _program.AddPet(_barsik);
-            _program.AddPet(new Pet("Barsik", Species.Dog, 7, 15));
-            _program.AddPet(_rex);
-
-            // Act
-            int removed = _program.RemoveByNickname("Barsik");
-
-            // Assert
-            Assert.AreEqual(2, removed);
-            Assert.AreEqual(1, _program.Count);
-            Assert.IsFalse(_program.ContainsNickname("Barsik"));
-        }
-
-        [TestMethod]
-        public void RemoveByNickname_MissingNickname_ReturnsZero()
-        {
-            // Arrange
-            FillProgram();
-
-            // Act
-            int removed = _program.RemoveByNickname("Sharik");
-
-            // Assert
-            Assert.AreEqual(0, removed);
-            Assert.AreEqual(3, _program.Count);
-        }
-
-        [TestMethod]
-        [DataRow(3, 1)]
-        [DataRow(10, 0)]
-        public void RemoveByAge_ReturnsRemovedCount(int age, int expected)
-        {
-            // Arrange
-            FillProgram();
-
-            // Act
-            int removed = _program.RemoveByAge(age);
-
-            // Assert
-            Assert.AreEqual(expected, removed);
-            Assert.AreEqual(3 - expected, _program.Count);
-        }
-
-        [TestMethod]
-        [DataRow(20.0, 1)]
-        [DataRow(7.0, 0)]
-        public void RemoveByWeight_ReturnsRemovedCount(double weight, int expected)
-        {
-            // Arrange
-            FillProgram();
-
-            // Act
-            int removed = _program.RemoveByWeight(weight);
-
-            // Assert
-            Assert.AreEqual(expected, removed);
-            Assert.AreEqual(3 - expected, _program.Count);
-        }
-
-        [TestMethod]
-        [DataRow(true, 2)]
-        [DataRow(false, 1)]
-        public void RemoveByVaccination_ReturnsRemovedCount(bool vaccinated, int expected)
-        {
-            // Arrange
-            FillProgram();
-
-            // Act
-            int removed = _program.RemoveByVaccination(vaccinated);
-
-            // Assert
-            Assert.AreEqual(expected, removed);
-            Assert.AreEqual(3 - expected, _program.Count);
-        }
-
-        [TestMethod]
-        [DataRow(Species.Cat, 2)]
-        [DataRow(Species.Hamster, 0)]
-        public void RemoveByType_ReturnsRemovedCount(Species type, int expected)
-        {
-            // Arrange
-            FillProgram();
-
-            // Act
-            int removed = _program.RemoveByType(type);
-
-            // Assert
-            Assert.AreEqual(expected, removed);
-            Assert.AreEqual(3 - expected, _program.Count);
-        }
-
-        [TestMethod]
-        public void AddPet_AfterRemovingFromFullList_IsAllowed()
-        {
-            // Arrange
-            FillProgram();
-            _program.RemoveByNumber(2);
-            Pet max = new Pet("Max", Species.Snake);
-
-            // Act
-            _program.AddPet(max);
-
-            // Assert
-            Assert.AreEqual(3, _program.Count);
-            Assert.AreSame(max, _program.GetByNumber(3));
-        }
-
-        [TestMethod]
-        public void SetMaxCapacity_LessThanCount_ThrowsInvalidOperationException()
-        {
-            // Arrange
-            FillProgram();
-
-            // Act + Assert
-            Assert.ThrowsExactly<InvalidOperationException>(() => _program.SetMaxCapacity(2));
-            Assert.AreEqual(3, _program.MaxCapacity);
-        }
-
-        [TestMethod]
-        public void SetMaxCapacity_ValidValue_AllowsMorePets()
-        {
-            // Arrange
-            FillProgram();
-
-            // Act
-            _program.SetMaxCapacity(5);
-
-            // Assert
-            Assert.AreEqual(5, _program.MaxCapacity);
-            Assert.IsFalse(_program.IsFull);
-        }
-
-        [TestMethod]
-        [DataRow("Barsik", "Barsik")]
-        [DataRow("  Rex  ", "Rex")]
-        public void ParseNonEmpty_ValidValue_ReturnsTrimmed(string input, string expected)
-        {
-            // Act
-            string actual = _program.ParseNonEmpty(input);
-
-            // Assert
-            Assert.AreEqual(expected, actual);
+            Assert.ThrowsExactly<ArgumentNullException>(() => _pet.Nickname = null);
         }
 
         [TestMethod]
         [DataRow("")]
         [DataRow("   ")]
-        public void ParseNonEmpty_EmptyValue_ThrowsArgumentException(string input)
+        public void Nickname_EmptyValue_ThrowsArgumentNullException(string nickname)
         {
             // Act + Assert
-            Assert.ThrowsExactly<ArgumentException>(() => _program.ParseNonEmpty(input));
+            Assert.ThrowsExactly<ArgumentNullException>(() => _pet.Nickname = nickname);
         }
 
         [TestMethod]
-        public void ParseNonEmpty_Null_ThrowsArgumentException()
+        [DataRow("A")]
+        [DataRow("ThisNicknameIsDefinitelyTooLong!")]
+        public void Nickname_WrongLength_ThrowsArgumentOutOfRangeException(string nickname)
         {
             // Act + Assert
-            Assert.ThrowsExactly<ArgumentException>(() => _program.ParseNonEmpty(null));
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _pet.Nickname = nickname);
         }
 
         [TestMethod]
-        [DataRow("5", 5)]
-        [DataRow("-3", -3)]
-        [DataRow("0", 0)]
-        public void ParseInt_ValidNumber_ReturnsValue(string input, int expected)
+        public void Nickname_ContainsSeparator_ThrowsArgumentException()
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<ArgumentException>(() => _pet.Nickname = "Bar;sik");
+        }
+
+        [TestMethod]
+        public void Nickname_InvalidValue_KeepsOldValue()
+        {
+            // Arrange
+            string oldNickname = _pet.Nickname;
+
+            // Act
+            try
+            {
+                _pet.Nickname = "A";
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                // очікуваний виняток
+            }
+
+            // Assert
+            Assert.AreEqual(oldNickname, _pet.Nickname);
+        }
+
+        // =====================================================================
+        // Властивість Age
+        // =====================================================================
+
+        [TestMethod]
+        [DataRow(0)]
+        [DataRow(30)]
+        [DataRow(60)]
+        public void Age_ValueInRange_IsSet(int age)
         {
             // Act
-            int actual = _program.ParseInt(input);
+            _pet.Age = age;
+
+            // Assert
+            Assert.AreEqual(age, _pet.Age);
+        }
+
+        [TestMethod]
+        [DataRow(-1)]
+        [DataRow(61)]
+        public void Age_ValueOutOfRange_ThrowsArgumentOutOfRangeException(int age)
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _pet.Age = age);
+        }
+
+        // =====================================================================
+        // Властивість Weight
+        // =====================================================================
+
+        [TestMethod]
+        [DataRow(0.1)]
+        [DataRow(250.0)]
+        [DataRow(500.0)]
+        public void Weight_ValueInRange_IsSet(double weight)
+        {
+            // Act
+            _pet.Weight = weight;
+
+            // Assert
+            Assert.AreEqual(weight, _pet.Weight, 0.001);
+        }
+
+        [TestMethod]
+        public void Weight_ManyDecimals_IsRoundedToTwo()
+        {
+            // Act
+            _pet.Weight = 4.567;
+
+            // Assert
+            Assert.AreEqual(4.57, _pet.Weight);
+        }
+
+        [TestMethod]
+        [DataRow(0.09)]
+        [DataRow(500.01)]
+        [DataRow(-3.0)]
+        public void Weight_ValueOutOfRange_ThrowsArgumentOutOfRangeException(double weight)
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _pet.Weight = weight);
+        }
+
+        [TestMethod]
+        [DataRow(double.NaN)]
+        [DataRow(double.PositiveInfinity)]
+        public void Weight_NotANumber_ThrowsArgumentException(double weight)
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<ArgumentException>(() => _pet.Weight = weight);
+        }
+
+        // =====================================================================
+        // Властивість Type
+        // =====================================================================
+
+        [TestMethod]
+        public void Type_ValidValue_IsSet()
+        {
+            // Act
+            _pet.Type = Species.Reptile;
+
+            // Assert
+            Assert.AreEqual(Species.Reptile, _pet.Type);
+        }
+
+        [TestMethod]
+        public void Type_UndefinedValue_ThrowsArgumentException()
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<ArgumentException>(() => _pet.Type = (Species)99);
+        }
+
+        // =====================================================================
+        // Статична властивість FoodConversionRatio
+        // =====================================================================
+
+        [TestMethod]
+        public void FoodConversionRatio_ValidValue_IsSet()
+        {
+            // Act
+            Pet.FoodConversionRatio = 0.25;
+
+            // Assert
+            Assert.AreEqual(0.25, Pet.FoodConversionRatio);
+        }
+
+        [TestMethod]
+        [DataRow(0.0)]
+        [DataRow(0.6)]
+        public void FoodConversionRatio_OutOfRange_ThrowsArgumentOutOfRangeException(double ratio)
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => Pet.FoodConversionRatio = ratio);
+        }
+
+        [TestMethod]
+        [DataRow(double.NaN)]
+        [DataRow(double.PositiveInfinity)]
+        public void FoodConversionRatio_NotANumber_ThrowsArgumentException(double ratio)
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<ArgumentException>(() => Pet.FoodConversionRatio = ratio);
+        }
+
+        [TestMethod]
+        public void FoodConversionRatio_Changed_AffectsAllPets()
+        {
+            // Arrange
+            Pet second = new Pet("Rex", Species.Dog, 5, 20);
+
+            // Act
+            Pet.FoodConversionRatio = 0.2;
+
+            // Assert: одна зміна статичного значення впливає на всі об'єкти
+            Assert.AreEqual(0.9, _pet.DailyFoodNorm);
+            Assert.AreEqual(4.0, second.DailyFoodNorm);
+        }
+
+        // =====================================================================
+        // Обчислювальні властивості
+        // =====================================================================
+
+        [TestMethod]
+        public void DailyFoodNorm_DefaultRatio_EqualsTenPercentOfWeight()
+        {
+            // Arrange
+            Pet.FoodConversionRatio = 0.1;
+
+            // Act
+            double norm = _pet.DailyFoodNorm;
+
+            // Assert
+            Assert.AreEqual(0.45, norm);
+        }
+
+        [TestMethod]
+        [DataRow(0, "Малюк")]
+        [DataRow(1, "Малюк")]
+        [DataRow(2, "Дорослий")]
+        [DataRow(8, "Дорослий")]
+        [DataRow(9, "Літній")]
+        public void AgeCategory_DependsOnAge(int age, string expected)
+        {
+            // Arrange
+            _pet.Age = age;
+
+            // Act
+            string actual = _pet.AgeCategory;
 
             // Assert
             Assert.AreEqual(expected, actual);
         }
 
         [TestMethod]
-        [DataRow("abc")]
-        [DataRow("4.5")]
-        [DataRow("")]
-        public void ParseInt_NotInteger_ThrowsFormatException(string input)
-        {
-            // Act + Assert
-            Assert.ThrowsExactly<FormatException>(() => _program.ParseInt(input));
-        }
-
-        [TestMethod]
-        public void ParseInt_Null_ThrowsFormatException()
-        {
-            // Act + Assert
-            Assert.ThrowsExactly<FormatException>(() => _program.ParseInt(null));
-        }
-
-        [TestMethod]
-        [DataRow("1", 1)]
-        [DataRow("10", 10)]
-        public void ParsePositiveInt_PositiveNumber_ReturnsValue(string input, int expected)
+        public void ShortId_IsFirstEightSymbolsOfId()
         {
             // Act
-            int actual = _program.ParsePositiveInt(input);
+            string shortId = _pet.ShortId;
 
             // Assert
-            Assert.AreEqual(expected, actual);
+            Assert.AreEqual(Pet.ShortGuidLength, shortId.Length);
+            Assert.IsTrue(_pet.Id.ToString().StartsWith(shortId));
         }
 
-        [TestMethod]
-        [DataRow("0")]
-        [DataRow("-3")]
-        public void ParsePositiveInt_NotPositive_ThrowsArgumentOutOfRangeException(string input)
-        {
-            // Act + Assert
-            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _program.ParsePositiveInt(input));
-        }
+        // =====================================================================
+        // Методи Has...
+        // =====================================================================
 
         [TestMethod]
-        public void ParsePositiveInt_NotNumber_ThrowsFormatException()
-        {
-            // Act + Assert
-            Assert.ThrowsExactly<FormatException>(() => _program.ParsePositiveInt("abc"));
-        }
-
-        [TestMethod]
-        [DataRow("4.5", 4.5)]
-        [DataRow("4,5", 4.5)]
-        [DataRow("10", 10.0)]
-        [DataRow("-0.1", -0.1)]
-        public void ParseDouble_ValidNumber_ReturnsValue(string input, double expected)
+        [DataRow("Barsik")]
+        [DataRow("BARSIK")]
+        [DataRow("  barsik  ")]
+        public void HasNickname_SameNicknameAnyCase_ReturnsTrue(string nickname)
         {
             // Act
-            double actual = _program.ParseDouble(input);
-
-            // Assert
-            Assert.AreEqual(expected, actual, 0.0001);
-        }
-
-        [TestMethod]
-        [DataRow("abc")]
-        [DataRow("")]
-        public void ParseDouble_NotNumber_ThrowsFormatException(string input)
-        {
-            // Act + Assert
-            Assert.ThrowsExactly<FormatException>(() => _program.ParseDouble(input));
-        }
-
-        [TestMethod]
-        [DataRow("так")]
-        [DataRow("YES")]
-        [DataRow(" y ")]
-        [DataRow("1")]
-        public void ParseBool_PositiveAnswer_ReturnsTrue(string input)
-        {
-            // Act
-            bool actual = _program.ParseBool(input);
+            bool actual = _pet.HasNickname(nickname);
 
             // Assert
             Assert.IsTrue(actual);
         }
 
         [TestMethod]
-        [DataRow("ні")]
-        [DataRow("нет")]
-        [DataRow("No")]
-        [DataRow("0")]
-        public void ParseBool_NegativeAnswer_ReturnsFalse(string input)
+        public void HasNickname_OtherNickname_ReturnsFalse()
+        {
+            // Act + Assert
+            Assert.IsFalse(_pet.HasNickname("Murzik"));
+        }
+
+        [TestMethod]
+        public void HasNickname_Null_ReturnsFalse()
         {
             // Act
-            bool actual = _program.ParseBool(input);
+            bool actual = _pet.HasNickname(null);
 
             // Assert
             Assert.IsFalse(actual);
         }
 
         [TestMethod]
-        [DataRow("можливо")]
-        [DataRow("")]
-        public void ParseBool_UnknownAnswer_ThrowsFormatException(string input)
-        {
-            // Act + Assert
-            Assert.ThrowsExactly<FormatException>(() => _program.ParseBool(input));
-        }
-
-        [TestMethod]
-        [DataRow("1", Species.Cat)]
-        [DataRow("2", Species.Dog)]
-        [DataRow("3", Species.Snake)]
-        [DataRow("4", Species.Hamster)]
-        [DataRow("5", Species.Reptile)]
-        public void ParseSpecies_MenuNumber_ReturnsSpecies(string input, Species expected)
+        [DataRow(3, true)]
+        [DataRow(4, false)]
+        public void HasAge_ReturnsExpected(int age, bool expected)
         {
             // Act
-            Species actual = _program.ParseSpecies(input);
+            bool actual = _pet.HasAge(age);
 
             // Assert
             Assert.AreEqual(expected, actual);
         }
 
         [TestMethod]
-        public void ParseSpecies_UnknownNumber_DoesNotValidate()
+        [DataRow(4.5, true)]
+        [DataRow(4.5004, true)]
+        [DataRow(4.6, false)]
+        public void HasWeight_ComparesWithTolerance(double weight, bool expected)
         {
             // Act
-            Species actual = _program.ParseSpecies("7");
+            bool actual = _pet.HasWeight(weight);
 
             // Assert
-            Assert.IsFalse(Enum.IsDefined(typeof(Species), actual));
+            Assert.AreEqual(expected, actual);
         }
 
         [TestMethod]
-        [DataRow("0")]
-        [DataRow("6")]
-        public void ParseDefinedSpecies_UnknownNumber_ThrowsArgumentException(string input)
-        {
-            // Act + Assert
-            Assert.ThrowsExactly<ArgumentException>(() => _program.ParseDefinedSpecies(input));
-        }
-
-        [TestMethod]
-        public void ParseDefinedSpecies_ValidNumber_ReturnsSpecies()
+        [DataRow(true, true)]
+        [DataRow(false, false)]
+        public void HasVaccination_ReturnsExpected(bool vaccinated, bool expected)
         {
             // Act
-            Species actual = _program.ParseDefinedSpecies("2");
+            bool actual = _pet.HasVaccination(vaccinated);
 
             // Assert
-            Assert.AreEqual(Species.Dog, actual);
+            Assert.AreEqual(expected, actual);
         }
 
         [TestMethod]
-        public void ParseDefinedSpecies_NotNumber_ThrowsFormatException()
+        public void HasType_SameType_ReturnsTrue_OtherType_ReturnsFalse()
         {
-            // Act + Assert
-            Assert.ThrowsExactly<FormatException>(() => _program.ParseDefinedSpecies("кіт"));
+            // Act
+            bool same = _pet.HasType(Species.Cat);
+            bool other = _pet.HasType(Species.Dog);
+
+            // Assert
+            Assert.IsTrue(same);
+            Assert.IsFalse(other);
         }
 
+        // =====================================================================
+        // Перевантажений метод Feed
+        // =====================================================================
+
         [TestMethod]
-        public void GetUserMessage_MessageWithParameterName_RemovesServicePart()
+        public void Feed_NoParameters_AddsDailyNorm()
         {
             // Arrange
-            Exception ex = new ArgumentOutOfRangeException("Age", "Вік має бути від 0 до 60 років!");
+            Pet.FoodConversionRatio = 0.1;
+            double expected = 4.5 + 0.45;
 
             // Act
-            string actual = _program.GetUserMessage(ex);
+            _pet.Feed();
 
             // Assert
-            Assert.AreEqual("Вік має бути від 0 до 60 років!", actual);
+            Assert.AreEqual(expected, _pet.Weight, 0.001);
         }
 
         [TestMethod]
-        public void GetUserMessage_PlainMessage_ReturnsUnchanged()
+        public void Feed_Amount_IncreasesWeightAndMakesNotHungry()
         {
-            // Arrange
-            Exception ex = new FormatException("Введіть ціле число!");
-
             // Act
-            string actual = _program.GetUserMessage(ex);
+            string message = _pet.Feed(0.5);
 
             // Assert
-            Assert.AreEqual("Введіть ціле число!", actual);
+            Assert.AreEqual(5.0, _pet.Weight);
+            Assert.IsFalse(_pet.IsHungry);
+            Assert.IsTrue(message.Contains("Barsik"));
         }
 
         [TestMethod]
-        public void GetUserMessage_Null_ThrowsArgumentNullException()
+        [DataRow(0.0)]
+        [DataRow(-1.0)]
+        public void Feed_AmountTooSmall_ThrowsArgumentOutOfRangeException(double food)
         {
             // Act + Assert
-            Assert.ThrowsExactly<ArgumentNullException>(() => _program.GetUserMessage(null));
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _pet.Feed(food));
+        }
+
+        [TestMethod]
+        public void Feed_AmountNotANumber_ThrowsArgumentException()
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<ArgumentException>(() => _pet.Feed(double.NaN));
+        }
+
+        [TestMethod]
+        public void Feed_ResultOverMaxWeight_ThrowsArgumentOutOfRangeException()
+        {
+            // Arrange
+            _pet.Weight = 499.9;
+
+            // Act + Assert: перевищення ловить сетер властивості Weight
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _pet.Feed(1.0));
+        }
+
+        [TestMethod]
+        public void Feed_AmountAndTimes_AddsAllPortions()
+        {
+            // Act
+            _pet.Feed(0.2, 3);
+
+            // Assert
+            Assert.AreEqual(5.1, _pet.Weight, 0.001);
+        }
+
+        [TestMethod]
+        [DataRow(0)]
+        [DataRow(-2)]
+        public void Feed_TimesNotPositive_ThrowsArgumentOutOfRangeException(int times)
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _pet.Feed(0.2, times));
+        }
+
+        // =====================================================================
+        // Перевантажений метод Walk
+        // =====================================================================
+
+        [TestMethod]
+        public void Walk_NoParameters_ReturnsMessageWithNickname()
+        {
+            // Act
+            string actual = _pet.Walk();
+
+            // Assert
+            Assert.AreEqual("Barsik гуляє на вулиці!", actual);
+        }
+
+        [TestMethod]
+        public void Walk_Minutes_ReturnsMessageWithMinutes()
+        {
+            // Act
+            string actual = _pet.Walk(30);
+
+            // Assert
+            Assert.AreEqual("Barsik гуляє на вулиці 30 хв!", actual);
+        }
+
+        [TestMethod]
+        [DataRow(0)]
+        [DataRow(-10)]
+        public void Walk_MinutesNotPositive_ThrowsArgumentOutOfRangeException(int minutes)
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _pet.Walk(minutes));
+        }
+
+        // =====================================================================
+        // Перевантажений метод MakeSound
+        // =====================================================================
+
+        [TestMethod]
+        [DataRow(Species.Cat, "Мяу!")]
+        [DataRow(Species.Dog, "Гав!")]
+        [DataRow(Species.Snake, "Ш-ш-ш!")]
+        [DataRow(Species.Hamster, "Пи-пи!")]
+        [DataRow(Species.Reptile, "Хр-р!")]
+        public void MakeSound_DependsOnSpecies(Species type, string voice)
+        {
+            // Arrange
+            _pet.Type = type;
+
+            // Act
+            string actual = _pet.MakeSound();
+
+            // Assert
+            Assert.AreEqual($"Barsik: {voice}", actual);
+        }
+
+        [TestMethod]
+        public void MakeSound_Times_RepeatsVoice()
+        {
+            // Act
+            string actual = _pet.MakeSound(3);
+
+            // Assert
+            Assert.AreEqual("Barsik: Мяу! Мяу! Мяу!", actual);
+        }
+
+        [TestMethod]
+        public void MakeSound_TimesZero_ThrowsArgumentOutOfRangeException()
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _pet.MakeSound(0));
+        }
+
+        // =====================================================================
+        // ToString
+        // =====================================================================
+
+        [TestMethod]
+        public void ToString_ReturnsParseFormat()
+        {
+            // Act
+            string actual = _pet.ToString();
+
+            // Assert
+            Assert.AreEqual("Barsik;Cat;3;4.5;так;Іваненко І.", actual);
+        }
+
+        [TestMethod]
+        public void ToString_NotVaccinated_WritesNi()
+        {
+            // Arrange
+            Pet pet = new Pet("Rex", Species.Dog, 4, 12.5, false, "Коваль О.");
+
+            // Act
+            string actual = pet.ToString();
+
+            // Assert
+            Assert.AreEqual("Rex;Dog;4;12.5;ні;Коваль О.", actual);
+        }
+
+        [TestMethod]
+        public void ToString_ThenParse_RestoresSameValues()
+        {
+            // Act
+            Pet copy = Pet.Parse(_pet.ToString());
+
+            // Assert
+            Assert.AreEqual(_pet.Nickname, copy.Nickname);
+            Assert.AreEqual(_pet.Type, copy.Type);
+            Assert.AreEqual(_pet.Age, copy.Age);
+            Assert.AreEqual(_pet.Weight, copy.Weight);
+            Assert.AreEqual(_pet.IsVaccinated, copy.IsVaccinated);
+            Assert.AreEqual(_pet.Owner, copy.Owner);
+        }
+
+        // =====================================================================
+        // Статичний метод Parse
+        // =====================================================================
+
+        [TestMethod]
+        public void Parse_ValidString_ReturnsPetWithValues()
+        {
+            // Arrange
+            string s = "Rex;Dog;4;12.5;ні;Коваль О.";
+
+            // Act
+            Pet pet = Pet.Parse(s);
+
+            // Assert
+            Assert.IsInstanceOfType<Pet>(pet);
+            Assert.AreEqual("Rex", pet.Nickname);
+            Assert.AreEqual(Species.Dog, pet.Type);
+            Assert.AreEqual(4, pet.Age);
+            Assert.AreEqual(12.5, pet.Weight);
+            Assert.IsFalse(pet.IsVaccinated);
+            Assert.AreEqual("Коваль О.", pet.Owner);
+        }
+
+        [TestMethod]
+        public void Parse_SpacesCommaAndSpeciesNumber_AreAccepted()
+        {
+            // Arrange
+            string s = " Rex ; 2 ; 4 ; 12,5 ; ТАК ; Коваль О. ";
+
+            // Act
+            Pet pet = Pet.Parse(s);
+
+            // Assert
+            Assert.AreEqual("Rex", pet.Nickname);
+            Assert.AreEqual(Species.Dog, pet.Type);
+            Assert.AreEqual(12.5, pet.Weight);
+            Assert.IsTrue(pet.IsVaccinated);
+        }
+
+        [TestMethod]
+        public void Parse_Null_ThrowsArgumentNullException()
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<ArgumentNullException>(() => Pet.Parse(null));
+        }
+
+        [TestMethod]
+        [DataRow("")]
+        [DataRow("   ")]
+        public void Parse_EmptyString_ThrowsArgumentNullException(string s)
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<ArgumentNullException>(() => Pet.Parse(s));
+        }
+
+        [TestMethod]
+        [DataRow("Rex;Dog;4")]
+        [DataRow("Rex;Dog;4;12.5;ні;Коваль О.;зайве")]
+        [DataRow("Rex;Dragon;4;12.5;ні;Коваль О.")]
+        [DataRow("Rex;7;4;12.5;ні;Коваль О.")]
+        [DataRow("Rex;0;4;12.5;ні;Коваль О.")]
+        [DataRow("Rex;Dog;чотири;12.5;ні;Коваль О.")]
+        [DataRow("Rex;Dog;4;багато;ні;Коваль О.")]
+        [DataRow("Rex;Dog;4;12.5;можливо;Коваль О.")]
+        public void Parse_WrongFormat_ThrowsFormatException(string s)
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<FormatException>(() => Pet.Parse(s));
+        }
+
+        [TestMethod]
+        [DataRow("Rex;Dog;99;12.5;ні;Коваль О.")]
+        [DataRow("Rex;Dog;4;999;ні;Коваль О.")]
+        [DataRow("R;Dog;4;12.5;ні;Коваль О.")]
+        public void Parse_ValueOutOfRange_ThrowsArgumentOutOfRangeException(string s)
+        {
+            // Act + Assert: діапазони перевіряють властивості всередині конструктора
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => Pet.Parse(s));
+        }
+
+        [TestMethod]
+        public void Parse_AnyInvalidString_ThrowsExceptionDerivedFromException()
+        {
+            // Act + Assert: Throws (без Exactly) приймає і нащадків вказаного типу
+            Assert.Throws<ArgumentException>(() => Pet.Parse(""));
+        }
+
+        // =====================================================================
+        // Статичний метод TryParse
+        // =====================================================================
+
+        [TestMethod]
+        public void TryParse_ValidString_ReturnsTrueAndObject()
+        {
+            // Act
+            bool result = Pet.TryParse("Luna;Cat;2;3.8;ні;Не вказано", out Pet pet);
+
+            // Assert
+            Assert.IsTrue(result);
+            Assert.IsNotNull(pet);
+            Assert.AreEqual("Luna", pet.Nickname);
+        }
+
+        [TestMethod]
+        [DataRow("")]
+        [DataRow("Luna;Cat;2")]
+        [DataRow("Luna;Cat;99;3.8;ні;Іван")]
+        public void TryParse_InvalidString_ReturnsFalseAndNull(string s)
+        {
+            // Act
+            bool result = Pet.TryParse(s, out Pet pet);
+
+            // Assert
+            Assert.IsFalse(result);
+            Assert.IsNull(pet);
+        }
+
+        [TestMethod]
+        public void TryParse_InvalidString_ReturnsErrorMessage()
+        {
+            // Act
+            bool result = Pet.TryParse("Luna;Cat;два;3.8;ні;Іван", out Pet pet, out string error);
+
+            // Assert
+            Assert.IsFalse(result);
+            Assert.IsNull(pet);
+            Assert.IsNotNull(error);
+            Assert.IsTrue(error.Contains("два"));
+        }
+
+        [TestMethod]
+        public void TryParse_ValidString_ErrorIsNull()
+        {
+            // Act
+            bool result = Pet.TryParse("Luna;Cat;2;3.8;ні;Іван", out Pet pet, out string error);
+
+            // Assert
+            Assert.IsTrue(result);
+            Assert.IsNull(error);
+        }
+
+        [TestMethod]
+        public void TryParse_InvalidString_DoesNotIncreaseCreatedCount()
+        {
+            // Arrange
+            int before = Pet.CreatedCount;
+
+            // Act
+            Pet.TryParse("Luna;Cat;99;3.8;ні;Іван", out Pet pet);
+            int after = Pet.CreatedCount;
+
+            // Assert
+            Assert.AreEqual(before, after);
+        }
+
+        // =====================================================================
+        // Статичний метод ToHumanAge
+        // =====================================================================
+
+        [TestMethod]
+        [DataRow(0, Species.Cat, 0)]
+        [DataRow(1, Species.Cat, 15)]
+        [DataRow(2, Species.Cat, 24)]
+        [DataRow(5, Species.Cat, 36)]
+        [DataRow(5, Species.Dog, 39)]
+        [DataRow(2, Species.Hamster, 50)]
+        [DataRow(10, Species.Snake, 20)]
+        [DataRow(10, Species.Reptile, 20)]
+        public void ToHumanAge_ReturnsExpected(int age, Species type, int expected)
+        {
+            // Act
+            int actual = Pet.ToHumanAge(age, type);
+
+            // Assert
+            Assert.AreEqual(expected, actual);
+        }
+
+        [TestMethod]
+        [DataRow(-1)]
+        [DataRow(61)]
+        public void ToHumanAge_AgeOutOfRange_ThrowsArgumentOutOfRangeException(int age)
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => Pet.ToHumanAge(age, Species.Cat));
+        }
+
+        [TestMethod]
+        public void ToHumanAge_UndefinedSpecies_ThrowsArgumentException()
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<ArgumentException>(() => Pet.ToHumanAge(3, (Species)99));
+        }
+
+        // =====================================================================
+        // Статичний метод CanLiveTogether
+        // =====================================================================
+
+        [TestMethod]
+        [DataRow(Species.Cat, Species.Cat, true)]
+        [DataRow(Species.Cat, Species.Dog, true)]
+        [DataRow(Species.Snake, Species.Reptile, true)]
+        [DataRow(Species.Reptile, Species.Hamster, true)]
+        [DataRow(Species.Cat, Species.Snake, false)]
+        [DataRow(Species.Cat, Species.Hamster, false)]
+        [DataRow(Species.Hamster, Species.Cat, false)]
+        [DataRow(Species.Snake, Species.Hamster, false)]
+        [DataRow(Species.Dog, Species.Snake, false)]
+        public void CanLiveTogether_ReturnsExpected(Species first, Species second, bool expected)
+        {
+            // Act
+            bool actual = Pet.CanLiveTogether(first, second);
+
+            // Assert
+            Assert.AreEqual(expected, actual);
         }
     }
 }
