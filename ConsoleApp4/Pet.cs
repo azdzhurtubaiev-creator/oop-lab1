@@ -22,16 +22,13 @@ namespace ConsoleApp4
         public const double DefaultWeight = 1.0;
         public const string DefaultOwner = "Не вказано";
 
-  
         public const double DefaultFoodConversionRatio = 0.1;
         public const double MinFoodConversionRatio = 0.01;
         public const double MaxFoodConversionRatio = 0.5;
 
-       
         public const char Separator = ';';
         private const int PartsCount = 6;
 
- 
         private static int _createdCount;
         private static double _foodConversionRatio;
 
@@ -41,35 +38,30 @@ namespace ConsoleApp4
         private bool _isVaccinated;
         private Species _type;
 
-     
         static Pet()
         {
             _createdCount = 0;
             _foodConversionRatio = DefaultFoodConversionRatio;
         }
 
-  
         public Pet()
             : this(DefaultNickname, Species.Cat)
         {
             UsedConstructor = "Pet() - конструктор без параметрів";
         }
 
-      
         public Pet(string nickname, Species type)
             : this(nickname, type, MinAge, DefaultWeight)
         {
             UsedConstructor = "Pet(nickname, type) - конструктор з двома параметрами";
         }
 
-      
         public Pet(string nickname, Species type, int age, double weight)
             : this(nickname, type, age, weight, false, DefaultOwner)
         {
             UsedConstructor = "Pet(nickname, type, age, weight) - конструктор з чотирма параметрами";
         }
 
- 
         public Pet(string nickname, Species type, int age, double weight, bool isVaccinated, string owner)
         {
             Id = Guid.NewGuid();
@@ -87,7 +79,7 @@ namespace ConsoleApp4
 
             _createdCount++;
         }
- 
+
         public static int CreatedCount
         {
             get
@@ -96,7 +88,6 @@ namespace ConsoleApp4
             }
         }
 
- 
         public static double FoodConversionRatio
         {
             get
@@ -252,7 +243,6 @@ namespace ConsoleApp4
             }
         }
 
-    
         public double DailyFoodNorm
         {
             get
@@ -286,7 +276,7 @@ namespace ConsoleApp4
                 return FeededAt == DateTime.MinValue;
             }
         }
- 
+
         public override string ToString()
         {
             string weight = Weight.ToString("0.##", CultureInfo.InvariantCulture);
@@ -295,7 +285,6 @@ namespace ConsoleApp4
             return $"{Nickname}{Separator}{Type}{Separator}{Age}{Separator}{weight}{Separator}{vaccinated}{Separator}{Owner}";
         }
 
-   
         public static Pet Parse(string s)
         {
             if (string.IsNullOrWhiteSpace(s))
@@ -321,16 +310,13 @@ namespace ConsoleApp4
             bool isVaccinated = ParseVaccination(parts[4].Trim());
             string owner = parts[5].Trim();
 
-     
             Pet pet = new Pet(nickname, type, age, weight, isVaccinated, owner);
 
-          
             pet.UsedConstructor = "Pet.Parse(string) -> повний конструктор";
 
             return pet;
         }
 
- 
         public static bool TryParse(string s, out Pet obj)
         {
             return TryParse(s, out obj, out _);
@@ -353,7 +339,6 @@ namespace ConsoleApp4
             }
         }
 
-        
         public static int ToHumanAge(int age, Species type)
         {
             if (age < MinAge || age > MaxAge)
@@ -393,7 +378,7 @@ namespace ConsoleApp4
                         nameof(type));
             }
         }
- 
+
         public static bool CanLiveTogether(Species first, Species second)
         {
             if (first == second)
@@ -507,8 +492,6 @@ namespace ConsoleApp4
 
             return $"{Nickname}: {voice.Trim()}";
         }
-
-       
 
         private static Species ParseSpecies(string text)
         {

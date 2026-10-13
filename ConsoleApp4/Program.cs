@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Text;
 
 namespace ConsoleApp4
 {
-    internal class Program
+    public class Program
     {
         private readonly List<Pet> _pets = new List<Pet>();
 
@@ -14,11 +13,277 @@ namespace ConsoleApp4
 
         private int _maxCapacity;
 
+        public Program()
+        {
+        }
+
+        public Program(int maxCapacity)
+        {
+            SetMaxCapacity(maxCapacity);
+        }
+
+        public int MaxCapacity
+        {
+            get
+            {
+                return _maxCapacity;
+            }
+        }
+
+        public int Count
+        {
+            get
+            {
+                return _pets.Count;
+            }
+        }
+
+        public bool IsEmpty
+        {
+            get
+            {
+                return _pets.Count == 0;
+            }
+        }
+
+        public bool IsFull
+        {
+            get
+            {
+                return _pets.Count >= _maxCapacity;
+            }
+        }
+
         static void Main(string[] args)
         {
-           
             Program application = new Program();
             application.Run();
+        }
+
+        public void SetMaxCapacity(int maxCapacity)
+        {
+            if (maxCapacity <= 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(maxCapacity),
+                    "Максимальна кількість тварин має бути більше 0!");
+            }
+
+            if (maxCapacity < _pets.Count)
+            {
+                throw new InvalidOperationException(
+                    "У списку вже більше тварин, ніж нова максимальна кількість!");
+            }
+
+            _maxCapacity = maxCapacity;
+        }
+
+        public IReadOnlyList<Pet> GetAll()
+        {
+            return _pets.AsReadOnly();
+        }
+
+        public void AddPet(Pet pet)
+        {
+            if (pet == null)
+            {
+                throw new ArgumentNullException(
+                    nameof(pet),
+                    "Тварина не може бути відсутньою!");
+            }
+
+            if (IsFull)
+            {
+                throw new InvalidOperationException(
+                    "Досягнуто максимальну кількість тварин!");
+            }
+
+            if (_pets.Contains(pet))
+            {
+                throw new InvalidOperationException(
+                    "Ця тварина вже є у списку!");
+            }
+
+            _pets.Add(pet);
+        }
+
+        public Pet GetByNumber(int number)
+        {
+            if (number < 1 || number > _pets.Count)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(number),
+                    "Невірний номер тварини!");
+            }
+
+            return _pets[number - 1];
+        }
+
+        public bool ContainsNickname(string nickname)
+        {
+            return _pets.Exists(p => p.HasNickname(nickname));
+        }
+
+        public List<Pet> FindByNickname(string nickname)
+        {
+            return _pets.FindAll(p => p.HasNickname(nickname));
+        }
+
+        public List<Pet> FindByAge(int age)
+        {
+            return _pets.FindAll(p => p.HasAge(age));
+        }
+
+        public List<Pet> FindByWeight(double weight)
+        {
+            return _pets.FindAll(p => p.HasWeight(weight));
+        }
+
+        public List<Pet> FindByVaccination(bool vaccinated)
+        {
+            return _pets.FindAll(p => p.HasVaccination(vaccinated));
+        }
+
+        public List<Pet> FindByType(Species type)
+        {
+            return _pets.FindAll(p => p.HasType(type));
+        }
+
+        public bool RemoveByNumber(int number)
+        {
+            if (number < 1 || number > _pets.Count)
+            {
+                return false;
+            }
+
+            _pets.RemoveAt(number - 1);
+            return true;
+        }
+
+        public int RemoveByNickname(string nickname)
+        {
+            return _pets.RemoveAll(p => p.HasNickname(nickname));
+        }
+
+        public int RemoveByAge(int age)
+        {
+            return _pets.RemoveAll(p => p.HasAge(age));
+        }
+
+        public int RemoveByWeight(double weight)
+        {
+            return _pets.RemoveAll(p => p.HasWeight(weight));
+        }
+
+        public int RemoveByVaccination(bool vaccinated)
+        {
+            return _pets.RemoveAll(p => p.HasVaccination(vaccinated));
+        }
+
+        public int RemoveByType(Species type)
+        {
+            return _pets.RemoveAll(p => p.HasType(type));
+        }
+
+        public string ParseNonEmpty(string? input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                throw new ArgumentException("Значення не може бути порожнім!");
+            }
+
+            return input.Trim();
+        }
+
+        public int ParseInt(string? input)
+        {
+            if (!int.TryParse(input, out int value))
+            {
+                throw new FormatException("Введіть ціле число!");
+            }
+
+            return value;
+        }
+
+        public int ParsePositiveInt(string? input)
+        {
+            int value = ParseInt(input);
+
+            if (value <= 0)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(input),
+                    "Число повинно бути більше 0!");
+            }
+
+            return value;
+        }
+
+        public double ParseDouble(string? input)
+        {
+            string prepared = (input ?? string.Empty).Replace(',', '.');
+
+            if (!double.TryParse(prepared, NumberStyles.Float, CultureInfo.InvariantCulture, out double value))
+            {
+                throw new FormatException("Введіть правильне число!");
+            }
+
+            return value;
+        }
+
+        public bool ParseBool(string? input)
+        {
+            string prepared = (input ?? string.Empty).Trim().ToLower();
+
+            if (prepared == "так" || prepared == "yes" || prepared == "y" || prepared == "1")
+            {
+                return true;
+            }
+
+            if (prepared == "ні" || prepared == "нет" || prepared == "no" || prepared == "n" || prepared == "0")
+            {
+                return false;
+            }
+
+            throw new FormatException("Введіть 'так' або 'ні'!");
+        }
+
+        public Species ParseSpecies(string? input)
+        {
+            int number = ParseInt(input);
+
+            return (Species)(number - 1);
+        }
+
+        public Species ParseDefinedSpecies(string? input)
+        {
+            Species type = ParseSpecies(input);
+
+            if (!Enum.IsDefined(typeof(Species), type))
+            {
+                throw new ArgumentException("Невірний номер виду!");
+            }
+
+            return type;
+        }
+
+        public string GetUserMessage(Exception ex)
+        {
+            if (ex == null)
+            {
+                throw new ArgumentNullException(nameof(ex));
+            }
+
+            string message = ex.Message;
+
+            int index = message.IndexOf(" (Parameter", StringComparison.Ordinal);
+
+            if (index > 0)
+            {
+                message = message.Substring(0, index);
+            }
+
+            return message;
         }
 
         private void Run()
@@ -27,7 +292,7 @@ namespace ConsoleApp4
 
             Console.WriteLine("=== Програма обліку домашніх тварин ===");
 
-            _maxCapacity = ReadPositiveInt("Введіть максимальну кількість тварин: ");
+            SetMaxCapacity(ReadPositiveInt("Введіть максимальну кількість тварин: "));
 
             bool running = true;
 
@@ -83,7 +348,7 @@ namespace ConsoleApp4
 
         private bool AddPetAction()
         {
-            if (_pets.Count >= _maxCapacity)
+            if (IsFull)
             {
                 Console.WriteLine("Досягнуто максимальну кількість тварин!");
                 return true;
@@ -104,7 +369,7 @@ namespace ConsoleApp4
                 _ => InvalidOption()
             };
         }
- 
+
         private bool AddPetManually()
         {
             Console.WriteLine();
@@ -207,14 +472,19 @@ namespace ConsoleApp4
             }
             while (hasError);
 
-            _pets.Add(pet);
+            if (ContainsNickname(pet.Nickname))
+            {
+                Console.WriteLine($"Увага: у списку вже є тварина з кличкою {pet.Nickname}.");
+            }
+
+            AddPet(pet);
 
             Console.WriteLine("Тварину успішно додано!");
             Console.WriteLine($"Спрацював конструктор: {pet.UsedConstructor}");
 
             return true;
         }
- 
+
         private bool AddPetAutomatically()
         {
             string[] names = { "Barsik", "Murzik", "Bobik", "Rex", "Luna", "Bella", "Rocky", "Max" };
@@ -237,7 +507,6 @@ namespace ConsoleApp4
             {
                 pet = constructorNumber switch
                 {
-                   
                     1 => new Pet
                     {
                         Nickname = nickname,
@@ -258,7 +527,7 @@ namespace ConsoleApp4
                 return true;
             }
 
-            _pets.Add(pet);
+            AddPet(pet);
 
             Console.WriteLine("\nТварину створено автоматично.");
             Console.WriteLine($"Спрацював конструктор: {pet.UsedConstructor}");
@@ -273,7 +542,7 @@ namespace ConsoleApp4
 
             return true;
         }
- 
+
         private bool AddPetFromString()
         {
             Console.WriteLine();
@@ -294,7 +563,7 @@ namespace ConsoleApp4
 
                 if (Pet.TryParse(input, out Pet pet, out string error))
                 {
-                    _pets.Add(pet);
+                    AddPet(pet);
 
                     Console.WriteLine("Рядок успішно перетворено, тварину додано!");
                     Console.WriteLine($"Спрацював: {pet.UsedConstructor}");
@@ -313,21 +582,21 @@ namespace ConsoleApp4
         {
             Console.WriteLine();
 
-            if (_pets.Count == 0)
+            if (IsEmpty)
             {
                 Console.WriteLine("Список тварин порожній.");
                 PrintCounters();
                 return true;
             }
 
-            PrintPetsTable(_pets);
+            PrintPetsTable(GetAll());
             PrintCounters();
             return true;
         }
- 
+
         private void PrintCounters()
         {
-            Console.WriteLine($"Тварин у списку: {_pets.Count} з {_maxCapacity}");
+            Console.WriteLine($"Тварин у списку: {Count} з {MaxCapacity}");
             Console.WriteLine($"Коректно створено об'єктів Pet за весь час роботи програми: {Pet.CreatedCount}");
             Console.WriteLine($"Коефіцієнт добової норми корму: {Pet.FoodConversionRatio}");
         }
@@ -379,7 +648,7 @@ namespace ConsoleApp4
 
         private bool SearchPetsAction()
         {
-            if (_pets.Count == 0)
+            if (IsEmpty)
             {
                 Console.WriteLine("Список тварин порожній.");
                 return true;
@@ -396,11 +665,11 @@ namespace ConsoleApp4
 
             List<Pet>? results = choice switch
             {
-                "1" => SearchByNickname(),
-                "2" => SearchByAge(),
-                "3" => SearchByWeight(),
-                "4" => SearchByVaccination(),
-                "5" => SearchByType(),
+                "1" => SearchByNicknameAction(),
+                "2" => SearchByAgeAction(),
+                "3" => SearchByWeightAction(),
+                "4" => SearchByVaccinationAction(),
+                "5" => SearchByTypeAction(),
                 _ => null
             };
 
@@ -422,56 +691,60 @@ namespace ConsoleApp4
             return true;
         }
 
-        private List<Pet> SearchByNickname()
+        private List<Pet> SearchByNicknameAction()
         {
             string nickname = ReadString("Введіть кличку: ");
-            return _pets.Where(p => p.HasNickname(nickname)).ToList();
+            return FindByNickname(nickname);
         }
 
-        private List<Pet> SearchByAge()
+        private List<Pet> SearchByAgeAction()
         {
             int age = ReadInt("Введіть вік: ");
-            return _pets.Where(p => p.HasAge(age)).ToList();
+            return FindByAge(age);
         }
 
-        private List<Pet> SearchByWeight()
+        private List<Pet> SearchByWeightAction()
         {
             double weight = ReadDouble("Введіть вагу (кг): ");
-            return _pets.Where(p => p.HasWeight(weight)).ToList();
+            return FindByWeight(weight);
         }
 
-        private List<Pet> SearchByVaccination()
+        private List<Pet> SearchByVaccinationAction()
         {
             bool vaccinated = ReadBool("Вакцинована? (так/ні): ");
-            return _pets.Where(p => p.HasVaccination(vaccinated)).ToList();
+            return FindByVaccination(vaccinated);
         }
 
-        private List<Pet> SearchByType()
+        private List<Pet> SearchByTypeAction()
         {
             Species type = ReadSpecies();
-            return _pets.Where(p => p.HasType(type)).ToList();
+            return FindByType(type);
         }
 
         private bool DemonstrateBehaviorAction()
         {
-            if (_pets.Count == 0)
+            if (IsEmpty)
             {
                 Console.WriteLine("Список тварин порожній.");
                 return true;
             }
 
             Console.WriteLine("\n=== Поведінка тварини ===");
-            PrintPetsTable(_pets);
+            PrintPetsTable(GetAll());
 
             int number = ReadInt("Виберіть номер тварини: ");
 
-            if (number < 1 || number > _pets.Count)
+            Pet pet;
+
+            try
             {
-                Console.WriteLine("Невірний номер тварини!");
+                pet = GetByNumber(number);
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                PrintError(ex);
                 return true;
             }
-
-            Pet pet = _pets[number - 1];
 
             RenderMenu($"Обрана тварина: {pet.Nickname}",
                 "1. Годувати - Feed()",
@@ -503,7 +776,7 @@ namespace ConsoleApp4
             };
         }
 
-         private bool FeedDefaultAction(Pet pet)
+        private bool FeedDefaultAction(Pet pet)
         {
             try
             {
@@ -602,7 +875,6 @@ namespace ConsoleApp4
             return true;
         }
 
- 
         private bool DemonstrateOverloadsAction(Pet pet)
         {
             Console.WriteLine($"\n--- Перевантажені методи класу Pet для {pet.Nickname} ---");
@@ -637,7 +909,7 @@ namespace ConsoleApp4
 
             return true;
         }
- 
+
         private bool DemonstrateStaticAction()
         {
             RenderMenu("Static-методи класу Pet",
@@ -674,10 +946,10 @@ namespace ConsoleApp4
         {
             Console.WriteLine($"\nПоточний коефіцієнт: {Pet.FoodConversionRatio}");
 
-            if (_pets.Count > 0)
+            if (!IsEmpty)
             {
                 Console.WriteLine("Добова норма ДО зміни:");
-                PrintPetsTable(_pets);
+                PrintPetsTable(GetAll());
             }
 
             double ratio = ReadDouble($"Новий коефіцієнт ({Pet.MinFoodConversionRatio} - {Pet.MaxFoodConversionRatio}): ");
@@ -693,10 +965,10 @@ namespace ConsoleApp4
                 return true;
             }
 
-            if (_pets.Count > 0)
+            if (!IsEmpty)
             {
                 Console.WriteLine("Добова норма ПІСЛЯ зміни (змінилася в усіх тварин одночасно):");
-                PrintPetsTable(_pets);
+                PrintPetsTable(GetAll());
             }
 
             return true;
@@ -789,11 +1061,11 @@ namespace ConsoleApp4
                     : $"Результат: false, причина: {error}");
             }
 
-            if (_pets.Count > 0)
+            if (!IsEmpty)
             {
                 Console.WriteLine("\n--- ToString -> TryParse для першої тварини зі списку ---");
 
-                string text = _pets[0].ToString();
+                string text = GetByNumber(1).ToString();
                 Console.WriteLine($"ToString(): {text}");
 
                 if (Pet.TryParse(text, out Pet copy))
@@ -810,7 +1082,7 @@ namespace ConsoleApp4
 
         private bool DeletePetAction()
         {
-            if (_pets.Count == 0)
+            if (IsEmpty)
             {
                 Console.WriteLine("Список тварин порожній.");
                 return true;
@@ -828,12 +1100,12 @@ namespace ConsoleApp4
 
             int removed = choice switch
             {
-                "1" => RemoveByIndex(),
-                "2" => RemoveByNickname(),
-                "3" => RemoveByAge(),
-                "4" => RemoveByWeight(),
-                "5" => RemoveByVaccination(),
-                "6" => RemoveByType(),
+                "1" => RemoveByIndexAction(),
+                "2" => RemoveByNicknameAction(),
+                "3" => RemoveByAgeAction(),
+                "4" => RemoveByWeightAction(),
+                "5" => RemoveByVaccinationAction(),
+                "6" => RemoveByTypeAction(),
                 _ => -1
             };
 
@@ -853,63 +1125,53 @@ namespace ConsoleApp4
             return true;
         }
 
-        private int RemoveByIndex()
+        private int RemoveByIndexAction()
         {
-            PrintPetsTable(_pets);
+            PrintPetsTable(GetAll());
             int index = ReadInt("Введіть порядковий номер тварини для видалення: ");
 
-            if (index < 1 || index > _pets.Count)
+            if (!RemoveByNumber(index))
             {
                 Console.WriteLine("Невірний номер!");
                 return 0;
             }
 
-            _pets.RemoveAt(index - 1);
             return 1;
         }
 
-        private int RemoveByNickname()
+        private int RemoveByNicknameAction()
         {
             string nickname = ReadString("Введіть кличку: ");
-            return _pets.RemoveAll(p => p.HasNickname(nickname));
+            return RemoveByNickname(nickname);
         }
 
-        private int RemoveByAge()
+        private int RemoveByAgeAction()
         {
             int age = ReadInt("Введіть вік: ");
-            return _pets.RemoveAll(p => p.HasAge(age));
+            return RemoveByAge(age);
         }
 
-        private int RemoveByWeight()
+        private int RemoveByWeightAction()
         {
             double weight = ReadDouble("Введіть вагу (кг): ");
-            return _pets.RemoveAll(p => p.HasWeight(weight));
+            return RemoveByWeight(weight);
         }
 
-        private int RemoveByVaccination()
+        private int RemoveByVaccinationAction()
         {
             bool vaccinated = ReadBool("Вакцинована? (так/ні): ");
-            return _pets.RemoveAll(p => p.HasVaccination(vaccinated));
+            return RemoveByVaccination(vaccinated);
         }
 
-        private int RemoveByType()
+        private int RemoveByTypeAction()
         {
             Species type = ReadSpecies();
-            return _pets.RemoveAll(p => p.HasType(type));
+            return RemoveByType(type);
         }
 
         private void PrintError(Exception ex)
         {
-            string message = ex.Message;
-
-            int index = message.IndexOf(" (Parameter", StringComparison.Ordinal);
-
-            if (index > 0)
-            {
-                message = message.Substring(0, index);
-            }
-
-            Console.WriteLine($"Помилка: {message}");
+            Console.WriteLine($"Помилка: {GetUserMessage(ex)}");
         }
 
         private void PrintSpeciesMenu()
@@ -923,65 +1185,20 @@ namespace ConsoleApp4
             Console.WriteLine("5. Рептилія");
         }
 
-        private int ParseInt(string input)
-        {
-            if (!int.TryParse(input, out int value))
-            {
-                throw new FormatException("Введіть ціле число!");
-            }
-
-            return value;
-        }
-
-        private double ParseDouble(string input)
-        {
-            string prepared = (input ?? string.Empty).Replace(',', '.');
-
-            if (!double.TryParse(prepared, NumberStyles.Float, CultureInfo.InvariantCulture, out double value))
-            {
-                throw new FormatException("Введіть правильне число!");
-            }
-
-            return value;
-        }
-
-        private bool ParseBool(string input)
-        {
-            string prepared = (input ?? string.Empty).Trim().ToLower();
-
-            if (prepared == "так" || prepared == "yes" || prepared == "y" || prepared == "1")
-            {
-                return true;
-            }
-
-            if (prepared == "ні" || prepared == "нет" || prepared == "no" || prepared == "n" || prepared == "0")
-            {
-                return false;
-            }
-
-            throw new FormatException("Введіть 'так' або 'ні'!");
-        }
-
-        private Species ParseSpecies(string input)
-        {
-            int number = ParseInt(input);
-
-            return (Species)(number - 1);
-        }
-
         private string ReadString(string message)
         {
             while (true)
             {
                 Console.Write(message);
-                string value = Console.ReadLine();
 
-                if (!string.IsNullOrWhiteSpace(value))
+                try
                 {
-                    return value.Trim();
+                    return ParseNonEmpty(Console.ReadLine());
                 }
-
-                Console.WriteLine("Значення не може бути порожнім!");
+                catch (Exception ex)
+                {
+                    PrintError(ex);
+                }
             }
         }
 
@@ -1006,14 +1223,16 @@ namespace ConsoleApp4
         {
             while (true)
             {
-                int value = ReadInt(message);
+                Console.Write(message);
 
-                if (value > 0)
+                try
                 {
-                    return value;
+                    return ParsePositiveInt(Console.ReadLine());
                 }
-
-                Console.WriteLine("Число повинно бути більше 0!");
+                catch (Exception ex)
+                {
+                    PrintError(ex);
+                }
             }
         }
 
@@ -1060,14 +1279,7 @@ namespace ConsoleApp4
 
                 try
                 {
-                    Species type = ParseSpecies(Console.ReadLine());
-
-                    if (!Enum.IsDefined(typeof(Species), type))
-                    {
-                        throw new ArgumentException("Невірний номер виду!");
-                    }
-
-                    return type;
+                    return ParseDefinedSpecies(Console.ReadLine());
                 }
                 catch (Exception ex)
                 {
