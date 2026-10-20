@@ -1,13 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Unicode;
 
 namespace ConsoleApp4
 {
     public class Program
     {
+        public const string CsvHeader = "Nickname;Type;Age;Weight;IsVaccinated;Owner";
+
+        public const string DefaultFileName = "test";
+
         private readonly List<Pet> _pets = new List<Pet>();
+
+        private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+        };
 
         private readonly Random _random = new Random();
 
@@ -185,6 +199,124 @@ namespace ConsoleApp4
             return _pets.RemoveAll(p => p.HasType(type));
         }
 
+        public int AddPets(List<Pet> pets)
+        {
+            if (pets == null)
+            {
+                throw new ArgumentNullException(
+                    nameof(pets),
+                    "Список тварин не може бути відсутнім!");
+            }
+
+            int added = 0;
+
+            foreach (Pet pet in pets)
+            {
+                if (IsFull)
+                {
+                    break;
+                }
+
+                if (pet == null || _pets.Contains(pet))
+                {
+                    continue;
+                }
+
+                _pets.Add(pet);
+                added++;
+            }
+
+            return added;
+        }
+
+        public int ClearPets()
+        {
+            int removed = _pets.Count;
+
+            _pets.Clear();
+            Pet.ResetCreatedCount();
+
+            return removed;
+        }
+
+        public string GetFileName(string? input, string extension)
+        {
+            string name = string.IsNullOrWhiteSpace(input) ? DefaultFileName : input.Trim();
+
+            if (Path.GetExtension(name) == string.Empty)
+            {
+                name = $"{name}.{extension}";
+            }
+
+            return name;
+        }
+
+        public void SaveToFileCsv(string path)
+        {
+            string fileName = ParseNonEmpty(path);
+
+            List<string> lines = new List<string>();
+            lines.Add(CsvHeader);
+
+            foreach (Pet pet in _pets)
+            {
+                lines.Add(pet.ToString());
+            }
+
+            File.WriteAllLines(fileName, lines);
+        }
+
+        public List<Pet> ReadFromFileCsv(string path)
+        {
+            string fileName = ParseNonEmpty(path);
+
+            string[] lines = File.ReadAllLines(fileName);
+
+            List<Pet> pets = new List<Pet>();
+
+            foreach (string line in lines)
+            {
+                if (line.Trim() == CsvHeader)
+                {
+                    continue;
+                }
+
+                if (Pet.TryParse(line, out Pet pet))
+                {
+                    pets.Add(pet);
+                }
+            }
+
+            return pets;
+        }
+
+        public void SaveToFileJson(string path)
+        {
+            string fileName = ParseNonEmpty(path);
+
+            string json = JsonSerializer.Serialize(_pets, _jsonOptions);
+
+            File.WriteAllText(fileName, json);
+        }
+
+        public List<Pet> ReadFromFileJson(string path)
+        {
+            string fileName = ParseNonEmpty(path);
+
+            string json = File.ReadAllText(fileName);
+
+            List<Pet>? pets = JsonSerializer.Deserialize<List<Pet>>(json, _jsonOptions);
+
+            if (pets == null)
+            {
+                return new List<Pet>();
+            }
+
+            pets.RemoveAll(p => p == null);
+
+            return pets;
+        }
+
         public string ParseNonEmpty(string? input)
         {
             if (string.IsNullOrWhiteSpace(input))
@@ -305,6 +437,9 @@ namespace ConsoleApp4
                     "4. Поведінка тварини",
                     "5. Видалити тварину",
                     "6. Продемонструвати static-методи",
+                    "7. Зберегти колекцію у файлі",
+                    "8. Зчитати колекцію з файлу",
+                    "9. Очистити колекцію",
                     "0. Вийти");
 
                 string choice = Console.ReadLine();
@@ -317,6 +452,9 @@ namespace ConsoleApp4
                     "4" => DemonstrateBehaviorAction(),
                     "5" => DeletePetAction(),
                     "6" => DemonstrateStaticAction(),
+                    "7" => SaveAction(),
+                    "8" => LoadAction(),
+                    "9" => ClearAction(),
                     "0" => false,
                     _ => InvalidOption()
                 };
@@ -597,7 +735,7 @@ namespace ConsoleApp4
         private void PrintCounters()
         {
             Console.WriteLine($"Тварин у списку: {Count} з {MaxCapacity}");
-            Console.WriteLine($"Коректно створено об'єктів Pet за весь час роботи програми: {Pet.CreatedCount}");
+            Console.WriteLine($"Лічильник створених об'єктів Pet (Pet.CreatedCount): {Pet.CreatedCount}");
             Console.WriteLine($"Коефіцієнт добової норми корму: {Pet.FoodConversionRatio}");
         }
 
@@ -938,7 +1076,7 @@ namespace ConsoleApp4
         {
             Console.WriteLine();
             PrintCounters();
-            Console.WriteLine("Лічильник не зменшується при видаленні: він рахує створені об'єкти, а не ті, що зараз у списку.");
+            Console.WriteLine("Лічильник не зменшується при видаленні окремих тварин, але обнуляється при очищенні колекції (пункт 9).");
             return true;
         }
 
@@ -1167,6 +1305,159 @@ namespace ConsoleApp4
         {
             Species type = ReadSpecies();
             return RemoveByType(type);
+        }
+
+        private bool SaveAction()
+        {
+            if (IsEmpty)
+            {
+                Console.WriteLine("Список тварин порожній - нічого зберігати.");
+                return true;
+            }
+
+            RenderMenu("Збереження у файл",
+                "1. Зберегти у файл *.csv",
+                "2. Зберегти у файл *.json");
+
+            string choice = Console.ReadLine();
+
+            return choice switch
+            {
+                "1" => SaveCsvAction(),
+                "2" => SaveJsonAction(),
+                _ => InvalidOption()
+            };
+        }
+
+        private bool SaveCsvAction()
+        {
+            string path = ReadFileName("csv");
+
+            try
+            {
+                SaveToFileCsv(path);
+                Console.WriteLine($"Збережено об'єктів: {Count}");
+                Console.WriteLine($"Файл: {Path.GetFullPath(path)}");
+            }
+            catch (Exception ex)
+            {
+                PrintError(ex);
+            }
+
+            return true;
+        }
+
+        private bool SaveJsonAction()
+        {
+            string path = ReadFileName("json");
+
+            try
+            {
+                SaveToFileJson(path);
+                Console.WriteLine($"Збережено об'єктів: {Count}");
+                Console.WriteLine($"Файл: {Path.GetFullPath(path)}");
+            }
+            catch (Exception ex)
+            {
+                PrintError(ex);
+            }
+
+            return true;
+        }
+
+        private bool LoadAction()
+        {
+            RenderMenu("Зчитування з файлу",
+                "1. Зчитати з файлу *.csv",
+                "2. Зчитати з файлу *.json");
+
+            string choice = Console.ReadLine();
+
+            return choice switch
+            {
+                "1" => LoadCsvAction(),
+                "2" => LoadJsonAction(),
+                _ => InvalidOption()
+            };
+        }
+
+        private bool LoadCsvAction()
+        {
+            string path = ReadFileName("csv");
+
+            try
+            {
+                List<Pet> loaded = ReadFromFileCsv(path);
+                PrintLoadResult(loaded);
+            }
+            catch (Exception ex)
+            {
+                PrintError(ex);
+            }
+
+            return true;
+        }
+
+        private bool LoadJsonAction()
+        {
+            string path = ReadFileName("json");
+
+            try
+            {
+                List<Pet> loaded = ReadFromFileJson(path);
+                PrintLoadResult(loaded);
+            }
+            catch (Exception ex)
+            {
+                PrintError(ex);
+            }
+
+            return true;
+        }
+
+        private void PrintLoadResult(List<Pet> loaded)
+        {
+            int added = AddPets(loaded);
+
+            Console.WriteLine($"Десеріалізовано об'єктів з файлу: {loaded.Count}");
+            Console.WriteLine($"Додано до колекції: {added}");
+
+            if (added < loaded.Count)
+            {
+                Console.WriteLine($"Не додано через ліміт ({MaxCapacity}): {loaded.Count - added}");
+            }
+
+            Console.WriteLine($"Тварин у списку: {Count} з {MaxCapacity}");
+        }
+
+        private bool ClearAction()
+        {
+            if (IsEmpty)
+            {
+                Console.WriteLine("Список тварин вже порожній.");
+                return true;
+            }
+
+            bool confirm = ReadBool($"Видалити всіх тварин ({Count})? (так/ні): ");
+
+            if (!confirm)
+            {
+                Console.WriteLine("Очищення скасовано.");
+                return true;
+            }
+
+            int removed = ClearPets();
+
+            Console.WriteLine($"Колекцію очищено. Видалено тварин: {removed}");
+            PrintCounters();
+
+            return true;
+        }
+
+        private string ReadFileName(string extension)
+        {
+            Console.Write($"Введіть назву файлу *.{extension} (Enter - {DefaultFileName}.{extension}): ");
+            return GetFileName(Console.ReadLine(), extension);
         }
 
         private void PrintError(Exception ex)

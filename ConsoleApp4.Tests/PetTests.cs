@@ -4,8 +4,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace ConsoleApp4.Tests
 {
-    // Клас змінює статичний стан Pet (коефіцієнт, лічильник),
-    // тому тести в ньому не можна запускати паралельно
+   
     [TestClass]
     [DoNotParallelize]
     public class PetTests
@@ -13,7 +12,7 @@ namespace ConsoleApp4.Tests
         private Pet _pet;
         private double _savedRatio;
 
-        // Виконується ПЕРЕД кожним тестом: свіжа тварина з відомими значеннями
+        
         [TestInitialize]
         public void Setup()
         {
@@ -21,18 +20,14 @@ namespace ConsoleApp4.Tests
             _pet = new Pet("Barsik", Species.Cat, 3, 4.5, true, "Іваненко І.");
         }
 
-        // Виконується ПІСЛЯ кожного тесту: повертаємо статичний коефіцієнт,
-        // щоб тести не впливали один на одного
+        
         [TestCleanup]
         public void Cleanup()
         {
             Pet.FoodConversionRatio = _savedRatio;
             _pet = null;
         }
-
-        // =====================================================================
-        // Конструктори
-        // =====================================================================
+ 
 
         [TestMethod]
         public void Constructor_NoParameters_SetsDefaultValues()
@@ -137,10 +132,7 @@ namespace ConsoleApp4.Tests
             Assert.ThrowsExactly<ArgumentOutOfRangeException>(
                 () => new Pet("Rex", Species.Dog, 99, 5));
         }
-
-        // =====================================================================
-        // Лічильник створених об'єктів (статична властивість)
-        // =====================================================================
+ 
 
         [TestMethod]
         public void CreatedCount_ValidObject_IncreasesByOne()
@@ -194,10 +186,7 @@ namespace ConsoleApp4.Tests
             // Assert: чотири об'єкти, а не більше, хоч конструктори викликають один одного
             Assert.AreEqual(before + 4, after);
         }
-
-        // =====================================================================
-        // Властивість Nickname (секція set з перевірками)
-        // =====================================================================
+ 
 
         [TestMethod]
         [DataRow("Rex")]
@@ -274,10 +263,7 @@ namespace ConsoleApp4.Tests
             Assert.AreEqual(oldNickname, _pet.Nickname);
         }
 
-        // =====================================================================
-        // Властивість Age
-        // =====================================================================
-
+       
         [TestMethod]
         [DataRow(0)]
         [DataRow(30)]
@@ -300,10 +286,7 @@ namespace ConsoleApp4.Tests
             Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _pet.Age = age);
         }
 
-        // =====================================================================
-        // Властивість Weight
-        // =====================================================================
-
+      
         [TestMethod]
         [DataRow(0.1)]
         [DataRow(250.0)]
@@ -346,10 +329,7 @@ namespace ConsoleApp4.Tests
             Assert.ThrowsExactly<ArgumentException>(() => _pet.Weight = weight);
         }
 
-        // =====================================================================
-        // Властивість Type
-        // =====================================================================
-
+       
         [TestMethod]
         public void Type_ValidValue_IsSet()
         {
@@ -367,9 +347,7 @@ namespace ConsoleApp4.Tests
             Assert.ThrowsExactly<ArgumentException>(() => _pet.Type = (Species)99);
         }
 
-        // =====================================================================
-        // Статична властивість FoodConversionRatio
-        // =====================================================================
+        
 
         [TestMethod]
         public void FoodConversionRatio_ValidValue_IsSet()
@@ -413,10 +391,7 @@ namespace ConsoleApp4.Tests
             Assert.AreEqual(4.0, second.DailyFoodNorm);
         }
 
-        // =====================================================================
-        // Обчислювальні властивості
-        // =====================================================================
-
+       
         [TestMethod]
         public void DailyFoodNorm_DefaultRatio_EqualsTenPercentOfWeight()
         {
@@ -459,10 +434,7 @@ namespace ConsoleApp4.Tests
             Assert.IsTrue(_pet.Id.ToString().StartsWith(shortId));
         }
 
-        // =====================================================================
-        // Методи Has...
-        // =====================================================================
-
+     
         [TestMethod]
         [DataRow("Barsik")]
         [DataRow("BARSIK")]
@@ -542,9 +514,7 @@ namespace ConsoleApp4.Tests
             Assert.IsFalse(other);
         }
 
-        // =====================================================================
-        // Перевантажений метод Feed
-        // =====================================================================
+       
 
         [TestMethod]
         public void Feed_NoParameters_AddsDailyNorm()
@@ -616,10 +586,7 @@ namespace ConsoleApp4.Tests
             // Act + Assert
             Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _pet.Feed(0.2, times));
         }
-
-        // =====================================================================
-        // Перевантажений метод Walk
-        // =====================================================================
+ 
 
         [TestMethod]
         public void Walk_NoParameters_ReturnsMessageWithNickname()
@@ -649,10 +616,7 @@ namespace ConsoleApp4.Tests
             // Act + Assert
             Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _pet.Walk(minutes));
         }
-
-        // =====================================================================
-        // Перевантажений метод MakeSound
-        // =====================================================================
+ 
 
         [TestMethod]
         [DataRow(Species.Cat, "Мяу!")]
@@ -688,10 +652,7 @@ namespace ConsoleApp4.Tests
             // Act + Assert
             Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _pet.MakeSound(0));
         }
-
-        // =====================================================================
-        // ToString
-        // =====================================================================
+ 
 
         [TestMethod]
         public void ToString_ReturnsParseFormat()
@@ -731,9 +692,7 @@ namespace ConsoleApp4.Tests
             Assert.AreEqual(_pet.Owner, copy.Owner);
         }
 
-        // =====================================================================
-        // Статичний метод Parse
-        // =====================================================================
+       
 
         [TestMethod]
         public void Parse_ValidString_ReturnsPetWithValues()
@@ -818,10 +777,7 @@ namespace ConsoleApp4.Tests
             Assert.Throws<ArgumentException>(() => Pet.Parse(""));
         }
 
-        // =====================================================================
-        // Статичний метод TryParse
-        // =====================================================================
-
+      
         [TestMethod]
         public void TryParse_ValidString_ReturnsTrueAndObject()
         {
@@ -886,10 +842,7 @@ namespace ConsoleApp4.Tests
             Assert.AreEqual(before, after);
         }
 
-        // =====================================================================
-        // Статичний метод ToHumanAge
-        // =====================================================================
-
+         
         [TestMethod]
         [DataRow(0, Species.Cat, 0)]
         [DataRow(1, Species.Cat, 15)]
@@ -924,9 +877,7 @@ namespace ConsoleApp4.Tests
             Assert.ThrowsExactly<ArgumentException>(() => Pet.ToHumanAge(3, (Species)99));
         }
 
-        // =====================================================================
-        // Статичний метод CanLiveTogether
-        // =====================================================================
+        
 
         [TestMethod]
         [DataRow(Species.Cat, Species.Cat, true)]

@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Text.Json.Serialization;
 
 namespace ConsoleApp4
 {
@@ -114,16 +115,22 @@ namespace ConsoleApp4
             }
         }
 
+        [JsonIgnore]
         public string UsedConstructor { get; private set; }
 
+        [JsonIgnore]
         public Guid Id { get; private set; }
 
+        [JsonIgnore]
         public DateTime CreatedAt { get; private set; }
 
+        [JsonIgnore]
         public DateTime FeededAt { get; private set; }
 
+        [JsonIgnore]
         public string Owner { get; set; } = DefaultOwner;
 
+        [JsonPropertyName("name")]
         public string Nickname
         {
             get
@@ -159,6 +166,7 @@ namespace ConsoleApp4
             }
         }
 
+        [JsonPropertyName("age")]
         public int Age
         {
             get
@@ -178,6 +186,7 @@ namespace ConsoleApp4
             }
         }
 
+        [JsonPropertyName("weight")]
         public double Weight
         {
             get
@@ -204,6 +213,7 @@ namespace ConsoleApp4
             }
         }
 
+        [JsonPropertyName("vaccinated")]
         public bool IsVaccinated
         {
             get
@@ -216,6 +226,8 @@ namespace ConsoleApp4
             }
         }
 
+        [JsonPropertyName("species")]
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public Species Type
         {
             get
@@ -235,6 +247,7 @@ namespace ConsoleApp4
             }
         }
 
+        [JsonIgnore]
         public string ShortId
         {
             get
@@ -243,6 +256,7 @@ namespace ConsoleApp4
             }
         }
 
+        [JsonIgnore]
         public double DailyFoodNorm
         {
             get
@@ -251,6 +265,7 @@ namespace ConsoleApp4
             }
         }
 
+        [JsonIgnore]
         public string AgeCategory
         {
             get
@@ -269,12 +284,18 @@ namespace ConsoleApp4
             }
         }
 
+        [JsonIgnore]
         public bool IsHungry
         {
             get
             {
                 return FeededAt == DateTime.MinValue;
             }
+        }
+
+        public static void ResetCreatedCount()
+        {
+            _createdCount = 0;
         }
 
         public override string ToString()

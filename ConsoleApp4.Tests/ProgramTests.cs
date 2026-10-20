@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Text.Json;
 using ConsoleApp4;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -14,6 +16,8 @@ namespace ConsoleApp4.Tests
         private Pet _barsik;
         private Pet _rex;
         private Pet _luna;
+        private string _csvPath;
+        private string _jsonPath;
 
         [TestInitialize]
         public void Setup()
@@ -22,6 +26,8 @@ namespace ConsoleApp4.Tests
             _barsik = new Pet("Barsik", Species.Cat, 3, 4.5, true, "Іваненко І.");
             _rex = new Pet("Rex", Species.Dog, 5, 20, false, "Коваль О.");
             _luna = new Pet("Luna", Species.Cat, 1, 3, true, "Не вказано");
+            _csvPath = Path.Combine(Path.GetTempPath(), $"pets_{Guid.NewGuid()}.csv");
+            _jsonPath = Path.Combine(Path.GetTempPath(), $"pets_{Guid.NewGuid()}.json");
         }
 
         [TestCleanup]
@@ -31,6 +37,8 @@ namespace ConsoleApp4.Tests
             _barsik = null;
             _rex = null;
             _luna = null;
+            File.Delete(_csvPath);
+            File.Delete(_jsonPath);
         }
 
         private void FillProgram()
@@ -711,6 +719,400 @@ namespace ConsoleApp4.Tests
         {
             // Act + Assert
             Assert.ThrowsExactly<ArgumentNullException>(() => _program.GetUserMessage(null));
+        }
+        [TestMethod]
+        public void AddPets_NonEmptyList_AddsToEnd()
+        {
+            // Arrange
+            _program.AddPet(_barsik);
+            List<Pet> pets = new List<Pet> { _rex, _luna };
+
+            // Act
+            int added = _program.AddPets(pets);
+
+            // Assert
+            Assert.AreEqual(2, added);
+            Assert.AreEqual(3, _program.Count);
+            Assert.AreSame(_barsik, _program.GetByNumber(1));
+            Assert.AreSame(_luna, _program.GetByNumber(3));
+        }
+
+        [TestMethod]
+        public void AddPets_MoreThanFreePlaces_AddsOnlyUntilFull()
+        {
+            // Arrange
+            _program.AddPet(_barsik);
+            List<Pet> pets = new List<Pet>
+            {
+                _rex,
+                _luna,
+                new Pet("Max", Species.Snake)
+            };
+
+            // Act
+            int added = _program.AddPets(pets);
+
+            // Assert
+            Assert.AreEqual(2, added);
+            Assert.IsTrue(_program.IsFull);
+        }
+
+        [TestMethod]
+        public void AddPets_NullAndDuplicate_AreSkipped()
+        {
+            // Arrange
+            _program.AddPet(_barsik);
+            List<Pet> pets = new List<Pet> { null, _barsik, _rex };
+
+            // Act
+            int added = _program.AddPets(pets);
+
+            // Assert
+            Assert.AreEqual(1, added);
+            Assert.AreEqual(2, _program.Count);
+        }
+
+        [TestMethod]
+        public void AddPets_Null_ThrowsArgumentNullException()
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<ArgumentNullException>(() => _program.AddPets(null));
+        }
+
+        [TestMethod]
+        public void ClearPets_FilledList_RemovesAllAndResetsCounter()
+        {
+            // Arrange
+            FillProgram();
+
+            // Act
+            int removed = _program.ClearPets();
+
+            // Assert
+            Assert.AreEqual(3, removed);
+            Assert.IsTrue(_program.IsEmpty);
+            Assert.AreEqual(0, Pet.CreatedCount);
+        }
+
+        [TestMethod]
+        public void ClearPets_EmptyList_ReturnsZero()
+        {
+            // Act
+            int removed = _program.ClearPets();
+
+            // Assert
+            Assert.AreEqual(0, removed);
+            Assert.AreEqual(0, _program.Count);
+        }
+
+        [TestMethod]
+        [DataRow("pets", "csv", "pets.csv")]
+        [DataRow("pets.csv", "csv", "pets.csv")]
+        [DataRow("  data  ", "json", "data.json")]
+        [DataRow("", "json", "test.json")]
+        [DataRow("   ", "csv", "test.csv")]
+        public void GetFileName_ReturnsNameWithExtension(string input, string extension, string expected)
+        {
+            // Act
+            string actual = _program.GetFileName(input, extension);
+
+            // Assert
+            Assert.AreEqual(expected, actual);
+        }
+
+        [TestMethod]
+        public void SaveToFileCsv_FilledList_WritesHeaderAndAllPets()
+        {
+            // Arrange
+            FillProgram();
+
+            // Act
+            _program.SaveToFileCsv(_csvPath);
+
+            // Assert
+            string[] lines = File.ReadAllLines(_csvPath);
+            Assert.AreEqual(4, lines.Length);
+            Assert.AreEqual(Program.CsvHeader, lines[0]);
+            Assert.AreEqual(_barsik.ToString(), lines[1]);
+            Assert.AreEqual(_luna.ToString(), lines[3]);
+        }
+
+        [TestMethod]
+        public void SaveToFileCsv_EmptyList_WritesOnlyHeader()
+        {
+            // Act
+            _program.SaveToFileCsv(_csvPath);
+
+            // Assert
+            string[] lines = File.ReadAllLines(_csvPath);
+            Assert.AreEqual(1, lines.Length);
+            Assert.AreEqual(Program.CsvHeader, lines[0]);
+        }
+
+        [TestMethod]
+        [DataRow("")]
+        [DataRow("   ")]
+        public void SaveToFileCsv_EmptyPath_ThrowsArgumentException(string path)
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<ArgumentException>(() => _program.SaveToFileCsv(path));
+        }
+
+        [TestMethod]
+        public void ReadFromFileCsv_SavedFile_ReturnsSamePets()
+        {
+            // Arrange
+            FillProgram();
+            _program.SaveToFileCsv(_csvPath);
+
+            // Act
+            List<Pet> pets = _program.ReadFromFileCsv(_csvPath);
+
+            // Assert
+            Assert.AreEqual(3, pets.Count);
+            Assert.AreEqual(_barsik.ToString(), pets[0].ToString());
+            Assert.AreEqual(_rex.ToString(), pets[1].ToString());
+            Assert.AreEqual(_luna.ToString(), pets[2].ToString());
+        }
+
+        [TestMethod]
+        public void ReadFromFileCsv_BrokenLines_AreSkipped()
+        {
+            // Arrange
+            string[] lines =
+            {
+                Program.CsvHeader,
+                "Barsik;Cat;3;4.5;так;Іваненко І.",
+                "Rex;Dog;5",
+                "Luna;Cat;два;3;так;Іван",
+                "Max;Dragon;2;10;ні;Іван",
+                "",
+                "Bella;Dog;99;12;так;Іван",
+                "Rocky;Dog;4;12.5;ні;Коваль О."
+            };
+            File.WriteAllLines(_csvPath, lines);
+
+            // Act
+            List<Pet> pets = _program.ReadFromFileCsv(_csvPath);
+
+            // Assert
+            Assert.AreEqual(2, pets.Count);
+            Assert.AreEqual("Barsik", pets[0].Nickname);
+            Assert.AreEqual("Rocky", pets[1].Nickname);
+        }
+
+        [TestMethod]
+        public void ReadFromFileCsv_BrokenLines_DoNotIncreaseCreatedCount()
+        {
+            // Arrange
+            string[] lines =
+            {
+                Program.CsvHeader,
+                "Barsik;Cat;3;4.5;так;Іваненко І.",
+                "Rex;Dog;5",
+                "Luna;Cat;два;3;так;Іван"
+            };
+            File.WriteAllLines(_csvPath, lines);
+            int before = Pet.CreatedCount;
+
+            // Act
+            _program.ReadFromFileCsv(_csvPath);
+
+            // Assert
+            Assert.AreEqual(before + 1, Pet.CreatedCount);
+        }
+
+        [TestMethod]
+        public void ReadFromFileCsv_FileWithoutHeader_ReadsAllLines()
+        {
+            // Arrange
+            File.WriteAllLines(_csvPath, new[] { _barsik.ToString(), _rex.ToString() });
+
+            // Act
+            List<Pet> pets = _program.ReadFromFileCsv(_csvPath);
+
+            // Assert
+            Assert.AreEqual(2, pets.Count);
+        }
+
+        [TestMethod]
+        public void ReadFromFileCsv_FileNotFound_ThrowsFileNotFoundException()
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<FileNotFoundException>(() => _program.ReadFromFileCsv(_csvPath));
+        }
+
+        [TestMethod]
+        public void ReadFromFileCsv_DoesNotChangeList()
+        {
+            // Arrange
+            FillProgram();
+            _program.SaveToFileCsv(_csvPath);
+
+            // Act
+            _program.ReadFromFileCsv(_csvPath);
+
+            // Assert
+            Assert.AreEqual(3, _program.Count);
+        }
+
+        [TestMethod]
+        public void SaveToFileJson_FilledList_WritesRenamedMainProperties()
+        {
+            // Arrange
+            FillProgram();
+
+            // Act
+            _program.SaveToFileJson(_jsonPath);
+
+            // Assert
+            string json = File.ReadAllText(_jsonPath);
+            Assert.IsTrue(json.Contains("\"name\": \"Barsik\""));
+            Assert.IsTrue(json.Contains("\"species\": \"Dog\""));
+            Assert.IsTrue(json.Contains("\"vaccinated\": true"));
+            Assert.IsFalse(json.Contains("Nickname"));
+            Assert.IsFalse(json.Contains("Owner"));
+            Assert.IsFalse(json.Contains("DailyFoodNorm"));
+        }
+
+        [TestMethod]
+        public void SaveToFileJson_FilledList_WritesArrayOfAllPets()
+        {
+            // Arrange
+            FillProgram();
+
+            // Act
+            _program.SaveToFileJson(_jsonPath);
+
+            // Assert
+            using JsonDocument document = JsonDocument.Parse(File.ReadAllText(_jsonPath));
+            Assert.AreEqual(JsonValueKind.Array, document.RootElement.ValueKind);
+            Assert.AreEqual(3, document.RootElement.GetArrayLength());
+        }
+
+        [TestMethod]
+        public void ReadFromFileJson_SavedFile_ReturnsSamePets()
+        {
+            // Arrange
+            FillProgram();
+            _program.SaveToFileJson(_jsonPath);
+
+            // Act
+            List<Pet> pets = _program.ReadFromFileJson(_jsonPath);
+
+            // Assert
+            Assert.AreEqual(3, pets.Count);
+            Assert.AreEqual("Rex", pets[1].Nickname);
+            Assert.AreEqual(Species.Dog, pets[1].Type);
+            Assert.AreEqual(5, pets[1].Age);
+            Assert.AreEqual(20, pets[1].Weight, 0.001);
+            Assert.IsFalse(pets[1].IsVaccinated);
+        }
+
+        [TestMethod]
+        public void ReadFromFileJson_IgnoredOwner_GetsDefaultValue()
+        {
+            // Arrange
+            FillProgram();
+            _program.SaveToFileJson(_jsonPath);
+
+            // Act
+            List<Pet> pets = _program.ReadFromFileJson(_jsonPath);
+
+            // Assert
+            Assert.AreEqual(Pet.DefaultOwner, pets[0].Owner);
+        }
+
+        [TestMethod]
+        public void ReadFromFileJson_EmptyArray_ReturnsEmptyList()
+        {
+            // Arrange
+            File.WriteAllText(_jsonPath, "[]");
+
+            // Act
+            List<Pet> pets = _program.ReadFromFileJson(_jsonPath);
+
+            // Assert
+            Assert.IsNotNull(pets);
+            Assert.AreEqual(0, pets.Count);
+        }
+
+        [TestMethod]
+        public void ReadFromFileJson_NullValue_ReturnsEmptyList()
+        {
+            // Arrange
+            File.WriteAllText(_jsonPath, "null");
+
+            // Act
+            List<Pet> pets = _program.ReadFromFileJson(_jsonPath);
+
+            // Assert
+            Assert.AreEqual(0, pets.Count);
+        }
+
+        [TestMethod]
+        [DataRow("[ { \"name\": \"Rex\", ")]
+        [DataRow("це не json")]
+        [DataRow("[ { \"name\": \"Rex\", \"age\": \"п'ять\" } ]")]
+        [DataRow("[ { \"name\": \"Rex\", \"species\": \"Dragon\" } ]")]
+        public void ReadFromFileJson_BrokenJson_ThrowsJsonException(string text)
+        {
+            // Arrange
+            File.WriteAllText(_jsonPath, text);
+
+            // Act + Assert
+            Assert.ThrowsExactly<JsonException>(() => _program.ReadFromFileJson(_jsonPath));
+        }
+
+        [TestMethod]
+        public void ReadFromFileJson_InvalidAge_ThrowsArgumentOutOfRangeException()
+        {
+            // Arrange
+            File.WriteAllText(_jsonPath, "[ { \"name\": \"Rex\", \"age\": 99 } ]");
+
+            // Act + Assert
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => _program.ReadFromFileJson(_jsonPath));
+        }
+
+        [TestMethod]
+        public void ReadFromFileJson_FileNotFound_ThrowsFileNotFoundException()
+        {
+            // Act + Assert
+            Assert.ThrowsExactly<FileNotFoundException>(() => _program.ReadFromFileJson(_jsonPath));
+        }
+
+        [TestMethod]
+        public void ReadFromFileJson_IncreasesCreatedCountForEveryPet()
+        {
+            // Arrange
+            FillProgram();
+            _program.SaveToFileJson(_jsonPath);
+            int before = Pet.CreatedCount;
+
+            // Act
+            _program.ReadFromFileJson(_jsonPath);
+
+            // Assert
+            Assert.AreEqual(before + 3, Pet.CreatedCount);
+        }
+
+        [TestMethod]
+        public void ReadFromFileJson_ThenAddPets_AddsToNonEmptyList()
+        {
+            // Arrange
+            Program target = new Program(10);
+            target.AddPet(new Pet("Max", Species.Snake));
+            FillProgram();
+            _program.SaveToFileJson(_jsonPath);
+
+            // Act
+            int added = target.AddPets(target.ReadFromFileJson(_jsonPath));
+
+            // Assert
+            Assert.AreEqual(3, added);
+            Assert.AreEqual(4, target.Count);
+            Assert.AreEqual("Max", target.GetByNumber(1).Nickname);
+            Assert.AreEqual("Barsik", target.GetByNumber(2).Nickname);
         }
     }
 }
