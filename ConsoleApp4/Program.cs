@@ -263,7 +263,7 @@ namespace ConsoleApp4
                 lines.Add(pet.ToString());
             }
 
-            File.WriteAllLines(fileName, lines);
+            File.WriteAllLines(fileName, lines , new UTF8Encoding(true));
         }
 
         public List<Pet> ReadFromFileCsv(string path)

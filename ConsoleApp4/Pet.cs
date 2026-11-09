@@ -409,7 +409,7 @@ namespace ConsoleApp4
 
             return !IsDangerousPair(first, second) && !IsDangerousPair(second, first);
         }
-
+ 
         public bool HasNickname(string nickname)
         {
             return Normalize(Nickname).Equals(
